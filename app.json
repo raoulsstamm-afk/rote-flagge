@@ -11,7 +11,9 @@
       "supportsTablet": false,
       "bundleIdentifier": "com.raoulstamm.roteflagge",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSSpeechRecognitionUsageDescription": "Damit dein Erzähltes als Text in deinem Tagebuch landet. Wenn möglich passiert das nur auf deinem Handy.",
+        "NSMicrophoneUsageDescription": "Rote Flagge hört nur zu, solange du erzählst, damit du nicht tippen musst. Nichts wird verschickt."
       }
     },
     "android": {
@@ -20,7 +22,15 @@
         "backgroundColor": "#FFF3EA",
         "foregroundImage": "./assets/icon.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.USE_BIOMETRIC",
+        "android.permission.USE_FINGERPRINT",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.USE_BIOMETRIC",
+        "android.permission.USE_FINGERPRINT"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -62,6 +72,16 @@
     },
     "runtimeVersion": {
       "policy": "appVersion"
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "af819422-dc2d-40ab-bfd0-6280a2336cca"
+      }
+    },
+    "owner": "raoul1998",
+    "updates": {
+      "url": "https://u.expo.dev/af819422-dc2d-40ab-bfd0-6280a2336cca"
     }
   }
 }
