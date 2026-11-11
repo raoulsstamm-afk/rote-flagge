@@ -9,13 +9,13 @@
     "scheme": "roteflagge",
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.raoulsstamm.roteflagge",
+      "bundleIdentifier": "com.raoulstamm.roteflagge",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
-      "package": "com.raoulsstamm.roteflagge",
+      "package": "com.raoulstamm.roteflagge",
       "adaptiveIcon": {
         "backgroundColor": "#FFF3EA",
         "foregroundImage": "./assets/icon.png"

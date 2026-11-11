@@ -34,7 +34,7 @@ Fabrik-App Nr. 3 (Hintergrund: `claude-wissen/wissen/app-fabrik/README.md`, Konz
 - Benachrichtigungen (lokal): `src/benachrichtigung.ts` (tägliche Erinnerung, geparkte Nachricht nach 24 Stunden bereit).
 - **KI-Einordnung ist nur vorbereitet:** `src/ki/einordnenKI.ts` mit `KI_AKTIV = false`, ruft keinen Server an. Später Supabase-Funktion im Kopfkiste-Projekt (Muster `kopfkiste/src/ki/sortierenKI.ts`), mit Einwilligung, Tageslimit, nur für Zahlende.
 - Paywall ist nur Optik. Preise sind Platzhalter in `src/data/preise.ts`. Knopf "Weiter (Test)" führt in die App.
-- Bundle-ID `com.raoulsstamm.roteflagge` ist ein **Platzhalter** (vor dem ersten Build mit Raoul klären; Kopfkiste nutzt `com.raoulstamm.…`).
+- Bundle-ID `com.raoulstamm.roteflagge` ist ein **Platzhalter** (vor dem ersten Build mit Raoul klären; Kopfkiste nutzt `com.raoulstamm.…`).
 
 ## Aufbau
 - `src/app/onboarding.tsx`: Start, Quiz "Ist das noch normal?" (10 Aussagen in `src/data/quiz.ts`), Ergebnis, Plan, Erinnerung, Paywall.
@@ -53,7 +53,7 @@ Fabrik-App Nr. 3 (Hintergrund: `claude-wissen/wissen/app-fabrik/README.md`, Konz
 - Preise festlegen, RevenueCat einbauen (harte Paywall: Jahresabo mit 7 Tagen gratis, Monatsabo).
 - KI-Einordnung über Supabase (Kopfkiste-Projekt) mit Einwilligung.
 - PDF-Export der Einträge als Premium-Grund (gewünscht, später).
-- Texte sprechen von "er/ihm". Prüfen, ob es eine neutrale Variante braucht (Eltern, Freundin, Chefin).
-- Hilfe-Nummern vor Veröffentlichung prüfen, Österreich und Schweiz ergänzen.
+- Texte sprechen von "er/ihm". Raoul (11.11.2026): Entscheidung nach Recherche, welche Pronomen die viralen US-Skripte der Nische nutzen.
+- Hilfe-Nummern für DE, AT, CH in `src/data/hilfe.ts` (Stand 11.11.2026), vor Veröffentlichung prüfen. Kurzliste im Ergebnis zeigt nur DE-Nummern, später nach Land wählen.
 - Datenschutzerklärung, App-Icon (derzeit Platzhalter-Flagge), Store-Texte, Support-Adresse aurorealis.apps@gmail.com.
 - Einwilligung und PostHog erst, wenn Statistik gewollt ist (Eventnamen aus `wissen/werkzeuge.md`, nie Eintragstexte).
