@@ -8,6 +8,7 @@ import { Txt } from '@/components/Txt';
 import { Bildschirm, Chip, HilfeKarte, Karte, Knopf, Rueckfrage } from '@/components/ui';
 import { entsperren, sperreVerfuegbar } from '@/sperre';
 import { useApp } from '@/state/store';
+import { testApp } from '@/testApp';
 import { farben, verlaeufe } from '@/theme';
 
 const UHRZEITEN = ['08:00', '12:00', '18:00', '20:00', '21:00', '22:00'];
@@ -103,6 +104,28 @@ export default function Einstellungen() {
         </Txt>
         <Knopf text="Alle Daten löschen" art="glas" klein onPress={() => setLoeschFrage(true)} />
       </Karte>
+
+      {/* Nur in der Test-App (Raoul 20.11.2026): Onboarding jederzeit neu durchklicken. Einträge und Geparktes bleiben,
+          am Ende geht es wie gewohnt zurück ins Tagebuch. */}
+      {testApp ? (
+        <Karte stil={{ gap: 10 }}>
+          <Txt groesse={18} gewicht="serif">
+            Test
+          </Txt>
+          <Txt groesse={14} farbe={farben.textLeise}>
+            Nur in der Test-App sichtbar. Deine Einträge bleiben erhalten.
+          </Txt>
+          <Knopf
+            text="Onboarding nochmal durchklicken"
+            art="glas"
+            klein
+            onPress={() => {
+              setze({ onboardingFertig: false });
+              router.replace('/onboarding');
+            }}
+          />
+        </Karte>
+      ) : null}
 
       <Txt groesse={12} farbe={farben.textHell} mitte>
         Rote Flagge {Constants.expoConfig?.version ?? ''} · Test-Version
