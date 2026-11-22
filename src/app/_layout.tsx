@@ -10,6 +10,7 @@ import { planeTaeglich } from '@/benachrichtigung';
 import { Sperre } from '@/components/Sperre';
 import { StoreProvider, useApp } from '@/state/store';
 import { farben } from '@/theme';
+import { MarkenIntro } from '@/components/MarkenIntro';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
@@ -78,6 +79,7 @@ export default function RootLayout() {
       <StoreProvider>
         <Inhalt />
       </StoreProvider>
+      <MarkenIntro bild={require('../../assets/startbild-aurorealis.png')} />
     </SafeAreaProvider>
   );
 }
