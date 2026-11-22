@@ -79,7 +79,7 @@ export default function RootLayout() {
       <StoreProvider>
         <Inhalt />
       </StoreProvider>
-      <MarkenIntro bild={require('../../assets/startbild-aurorealis.png')} />
+      <MarkenIntro bild={require('../../assets/startbild-aurorealis.png')} schriftzug={require('../../assets/schriftzug-aurorealis.png')} />
     </SafeAreaProvider>
   );
 }
