@@ -41,7 +41,7 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#FFF3EA",
+          "backgroundColor": "#000000",
           "image": "./assets/startbild-aurorealis.png",
           "imageWidth": 110
         }
