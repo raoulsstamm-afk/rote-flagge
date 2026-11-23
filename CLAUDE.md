@@ -56,10 +56,10 @@ Kernversprechen: "Wieder klar sehen." Fabrik-App (Hintergrund: `claude-wissen/wi
 ## Prüfen und Testen
 - Vor "fertig": `npx tsc --noEmit` und `npx expo-doctor`.
 - Browser-Test: `npm run web-export` und danach `npm run screenshots` (Playwright, 390 x 844). Fotos landen in `docs/screenshots/`, Konsolenfehler werden gemeldet. Fotos selbst ansehen. Im Web fehlen Sprache, Face ID und Benachrichtigungen.
-- Test-App auf dem iPhone: **noch nicht eingerichtet.** Es gibt noch kein EAS-Projekt (kein `eas init`, kein Build). Ablauf wie bei Kopfkiste: `npx eas-cli init` (legt `extra.eas.projectId` und `owner` an), in `app.json` `updates.url` ergänzen, Preview-Build (`eas build --profile preview --platform ios`, Kanal "preview"), danach neue Stände per `npx eas-cli update --channel preview --environment preview --platform ios --message "..."`. Build und Login macht Raoul bzw. nur nach seinem OK.
+- Test-App auf dem iPhone: EAS-Projekt @raoul1998/rote-flagge (ID af819422-dc2d-40ab-bfd0-6280a2336cca). Erster Preview-Build 23.11.2026 (Version 1.0.0, Symbol Variante B): https://expo.dev/accounts/raoul1998/projects/rote-flagge/builds/c5561692-571a-4cac-b11f-be77e88daf98 . Credentials liegen bei Expo, Builds laufen `--non-interactive`. Neue Stände per `npx -y eas-cli@latest update --channel preview --environment preview --platform ios --message "..." --non-interactive`. Builds nur nach Raouls OK (Expo-Kontingent kostet extra, wenn verbraucht).
 
 ## Offene Punkte
-- Bundle-ID, Apple-App und EAS-Projekt anlegen (Raoul).
+- Apple-App in App Store Connect anlegen (für Store). Bundle-ID und EAS-Projekt sind erledigt (23.11.2026).
 - Preise festlegen, RevenueCat einbauen (harte Paywall: Jahresabo mit 7 Tagen gratis, Monatsabo).
 - KI-Einordnung über Supabase (Kopfkiste-Projekt) mit Einwilligung.
 - PDF-Export der Einträge als Premium-Grund (gewünscht, später).
