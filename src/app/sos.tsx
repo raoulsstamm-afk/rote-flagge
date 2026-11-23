@@ -175,7 +175,7 @@ export default function Sos() {
     <Bildschirm verlauf={verlaeufe.sos} licht={SOS_LICHT}>
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 14 }}>
         <Leuchten groesse={320} staerke={0.3} farbe={farben.morgen} />
-        <Figur pose="jubeln" groesse={130} />
+        <Figur pose="flagge" groesse={130} />
         <Einblenden verz={150}>
           <Txt groesse={34} gewicht="serifFett" mitte>
             Du bist bei dir geblieben.

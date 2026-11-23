@@ -5,7 +5,7 @@ Kernversprechen: "Wieder klar sehen." Fabrik-App (Hintergrund: `claude-wissen/wi
 
 ## Aufbau heute (23.11.2026)
 - Design: warme Nacht (Pflaume, `src/theme.ts`), Halation in Koralle/Morgenrot (`src/components/Licht.tsx`), Koralle `#FF7A63` nur für Flagge, Hauptknopf, Fortschritt, auf Koralle dunkle Schrift. Überschriften Fraunces weiß mit dunkler Kontur, Text Nunito.
-- Figuren (`src/components/Figur.tsx`, SVG-Platzhalter bis KI-Posen): "Du" = weißes Leucht-Strichmännchen (Posen stehen, jubeln, winken, handy, denken, atmen, zeigen), die andere Person = graue Schattenfigur ohne Gesicht. `KleineFlagge` = Symbol und Belohnung. Kein Maskottchen.
+- **Maskottchen: das Knäuel** (Raoul 23.11.2026, Vorlage `docs/maskottchen-ideen/2-knaeuel-entwirren.png`): koralle Wollknäuel, am Anfang verheddert, entwirrt sich mit den Tagen ("Wieder klar sehen"). 12 KI-Posen (Nano Banana am Mac mini) in `assets/figur/<pose>.png` (stehen, winken, jubeln, troesten, entwirren, verheddert, denken, schlafen, flagge, atmen, handy, zeigen; 368 px, transparent, Füße unten), Übersicht `docs/maskottchen-ideen/knaeuel-posen.jpg`. Eingebaut über `Figur` (`src/components/Figur.tsx`, art "du"). Heute: Stufe Nacht = verheddert, Morgengrauen = entwirren. Die andere Person = graue Strichfigur ohne Gesicht (art "schatten"). Die rote Flagge bleibt Symbol und Belohnung (`KleineFlagge`), das Knäuel hält sie hoch.
 - Szene (`Szene.tsx`, Stufen `src/data/stufen.ts`): Nacht, Morgengrauen (3), Sonnenaufgang (7), Neuer Tag (14), Weites Land (30). Flaggen = Einträge.
 - Onboarding (`src/app/onboarding.tsx`, Ablauf `ABLAUF`): 2 Intro-Szenen, Phase (`src/data/phasen.ts`), Person mit Pronomen und Name (`src/data/person.ts`, `formen()` für alle Texte er/sie/neutral), 5 Fragen (`src/data/quiz.ts`: Karten, Chips, Regler), Ziel 30/60/90, Auswertung, Ergebnis ("Dein Muster"), SOS ausprobieren (echte Nachricht parken), erste Flagge, Plan, Erinnerung (Zeitrad), Paywall (Optik, 39,99/7,99).
 - Tabs (`src/app/(tabs)/`): Heute, Tagebuch, SOS-Knopf Mitte (öffnet `src/app/sos.tsx`: schreiben, eigene Flaggen + verblassende Schattenfigur, parken, Atemrunde 4/2/6, geschafft), Muster, Profil (= `einstellungen.tsx`).
@@ -26,7 +26,7 @@ Kernversprechen: "Wieder klar sehen." Fabrik-App (Hintergrund: `claude-wissen/wi
 - **Daten nur lokal** (AsyncStorage). Keine Konten, kein Server, keine Statistik. Beziehungsinhalte sind Gesundheitsdaten (Art. 9 DSGVO) und Daten Dritter.
 - **Sicherheit:** Hilfe-Nummern sichtbar (Ergebnis, Einstellungen, bei Kategorie "Bedroht oder angefasst"): Hilfetelefon 116 016, Notruf 110 (Liste in `src/data/hilfe.ts`). Benachrichtigungen verraten nie Inhalte ("Kurzer Moment für dich"). App-Sperre per Face ID optional.
 - Die App schickt nie selbst eine Nachricht ab.
-- Warm statt Alarm: Rot ist Akzent und Symbol, keine Warnfarbe. Die rote Flagge ist nur Symbol, kein Maskottchen.
+- Warm statt Alarm: Rot ist Akzent und Symbol, keine Warnfarbe. Die rote Flagge ist nur Symbol, das Maskottchen ist das Knäuel.
 
 ## Design (aus dem Fabrik-Entwurf, Kopfkiste-Stil)
 - Verläufe pro Bildschirm: Creme `#FFF3EA`, Pfirsich `#FBE1D6`, Rose `#F3D3D2`, Flieder `#EADBE6` (`src/theme.ts`, `verlaeufe`).

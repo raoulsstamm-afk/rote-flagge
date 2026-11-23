@@ -7,7 +7,7 @@ import { Txt } from '@/components/Txt';
 import { Bildschirm, Chip, Einblenden, HilfeKarte, Karte, Knopf, Marke, NurAufDemHandy } from '@/components/ui';
 import { gefuehle, KategorieId, kategorieKurz, kategorien, Waerme, WAERME_WAHL } from '@/data/kategorien';
 import { formen } from '@/data/person';
-import { KleineFlagge } from '@/components/Figur';
+import { Figur } from '@/components/Figur';
 import { datumText, erkannteMuster } from '@/data/muster';
 import { quizSchwerpunkte } from '@/data/quiz';
 import { spracheVerfuegbar, starteZuhoeren, stoppeZuhoeren } from '@/sprache';
@@ -229,7 +229,7 @@ function Fertig({ gespeichert, kopf }: { gespeichert: { eintrag: Eintrag; muster
       {kopf}
       <View style={{ alignItems: 'center', gap: 12, marginTop: 20 }}>
         <Animated.View style={{ transform: [{ scale: a }] }}>
-          <KleineFlagge groesse={64} />
+          <Figur pose={bedroht ? 'troesten' : 'flagge'} groesse={120} />
         </Animated.View>
         <Einblenden verz={200}>
           <Txt groesse={32} gewicht="serifFett" mitte>

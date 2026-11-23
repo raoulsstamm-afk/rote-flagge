@@ -37,7 +37,7 @@ export default function Heute() {
       </View>
 
       <Einblenden verz={120}>
-        <Szene stufe={st.index} flaggen={z.eintraege.length} breite={breite} pose={b.heuteGezaehlt ? 'winken' : 'stehen'} />
+        <Szene stufe={st.index} flaggen={z.eintraege.length} breite={breite} pose={b.heuteGezaehlt ? 'winken' : st.index === 0 ? 'verheddert' : st.index === 1 ? 'entwirren' : 'stehen'} />
       </Einblenden>
 
       <View style={{ gap: 6 }}>

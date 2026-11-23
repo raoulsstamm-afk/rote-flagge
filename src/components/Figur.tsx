@@ -1,15 +1,35 @@
 import { useEffect, useRef } from 'react';
-import { Animated, Easing, Platform, View } from 'react-native';
+import { Animated, Easing, Image, ImageSourcePropType, Platform, View } from 'react-native';
 import Svg, { Circle, G, Polyline, Rect } from 'react-native-svg';
 import { farben } from '@/theme';
+import { Leuchten } from './Licht';
 
-// "Du": weißes, leuchtendes Strichmännchen wie in den Reels (eigene Figur, kein Ritter, keine Ausrüstung).
-// Die andere Person ist dieselbe Form als blasse, graue Schattenfigur ohne Gesicht (Art "schatten").
-// Platzhalter aus SVG, bis die KI-Posen (Nano Banana) da sind. Immer in leichter Bewegung.
-export type Pose = 'stehen' | 'jubeln' | 'winken' | 'handy' | 'denken' | 'atmen' | 'zeigen';
+// "Du" ist seit 23.11.2026 das Knäuel (Maskottchen, Raoul): KI-Posen aus Nano Banana in assets/figur/ (gleicher Ausschnitt,
+// Füße unten). Es ist am Anfang verheddert und entwirrt sich mit den Tagen. Die andere Person bleibt die blasse,
+// graue Strichfigur ohne Gesicht (Art "schatten"). Immer in leichter Bewegung.
+export type Pose = 'stehen' | 'jubeln' | 'winken' | 'handy' | 'denken' | 'atmen' | 'zeigen' | 'troesten' | 'entwirren' | 'verheddert' | 'schlafen' | 'flagge';
+type StrichPose = 'stehen' | 'jubeln' | 'winken' | 'handy' | 'denken' | 'atmen' | 'zeigen';
+const STRICH: Record<Pose, StrichPose> = {
+  stehen: 'stehen', jubeln: 'jubeln', winken: 'winken', handy: 'handy', denken: 'denken', atmen: 'atmen', zeigen: 'zeigen',
+  troesten: 'atmen', entwirren: 'stehen', verheddert: 'denken', schlafen: 'atmen', flagge: 'jubeln',
+};
+const KNAEUEL: Record<Pose, ImageSourcePropType> = {
+  stehen: require('../../assets/figur/stehen.png'),
+  jubeln: require('../../assets/figur/jubeln.png'),
+  winken: require('../../assets/figur/winken.png'),
+  handy: require('../../assets/figur/handy.png'),
+  denken: require('../../assets/figur/denken.png'),
+  atmen: require('../../assets/figur/atmen.png'),
+  zeigen: require('../../assets/figur/zeigen.png'),
+  troesten: require('../../assets/figur/troesten.png'),
+  entwirren: require('../../assets/figur/entwirren.png'),
+  verheddert: require('../../assets/figur/verheddert.png'),
+  schlafen: require('../../assets/figur/schlafen.png'),
+  flagge: require('../../assets/figur/flagge.png'),
+};
 
 type P = [number, number];
-const KOPF: Record<Pose, P> = {
+const KOPF: Record<StrichPose, P> = {
   stehen: [50, 22],
   jubeln: [50, 22],
   winken: [50, 22],
@@ -19,7 +39,7 @@ const KOPF: Record<Pose, P> = {
   zeigen: [50, 22],
 };
 // Arme als Linienzüge ab der Schulter (50, 46), Beine ab der Hüfte (50, 80)
-const ARME: Record<Pose, [P[], P[]]> = {
+const ARME: Record<StrichPose, [P[], P[]]> = {
   stehen: [[[50, 46], [40, 60], [37, 74]], [[50, 46], [60, 60], [63, 74]]],
   jubeln: [[[50, 46], [38, 34], [31, 18]], [[50, 46], [62, 34], [69, 18]]],
   winken: [[[50, 46], [40, 60], [37, 74]], [[50, 46], [64, 40], [72, 24]]],
@@ -28,7 +48,7 @@ const ARME: Record<Pose, [P[], P[]]> = {
   atmen: [[[50, 46], [38, 56], [30, 66]], [[50, 46], [62, 56], [70, 66]]],
   zeigen: [[[50, 46], [40, 60], [37, 74]], [[50, 46], [66, 44], [82, 40]]],
 };
-const BEINE: Record<Pose, [P[], P[]]> = {
+const BEINE: Record<StrichPose, [P[], P[]]> = {
   stehen: [[[50, 80], [44, 100], [41, 120]], [[50, 80], [56, 100], [59, 120]]],
   jubeln: [[[50, 80], [42, 100], [37, 120]], [[50, 80], [58, 100], [63, 120]]],
   winken: [[[50, 80], [44, 100], [41, 120]], [[50, 80], [56, 100], [59, 120]]],
@@ -40,7 +60,7 @@ const BEINE: Record<Pose, [P[], P[]]> = {
 
 const punkte = (l: P[]) => l.map((p) => p.join(',')).join(' ');
 
-function Form({ pose, farbe, dicke, deckkraft }: { pose: Pose; farbe: string; dicke: number; deckkraft: number }) {
+function Form({ pose, farbe, dicke, deckkraft }: { pose: StrichPose; farbe: string; dicke: number; deckkraft: number }) {
   const [kx, ky] = KOPF[pose];
   return (
     <G stroke={farbe} strokeWidth={dicke} strokeLinecap="round" strokeLinejoin="round" fill="none" opacity={deckkraft}>
@@ -61,7 +81,7 @@ const nativ = Platform.OS !== 'web';
 export function Figur({ pose = 'stehen', groesse = 150, art = 'du', deckkraft = 1 }: { pose?: Pose; groesse?: number; art?: 'du' | 'schatten'; deckkraft?: number }) {
   const wippen = useRef(new Animated.Value(0)).current;
   useEffect(() => {
-    const dauer = pose === 'atmen' ? 2600 : pose === 'jubeln' ? 520 : 1700;
+    const dauer = pose === 'atmen' || pose === 'schlafen' ? 2600 : pose === 'jubeln' ? 520 : 1700;
     const schleife = Animated.loop(
       Animated.sequence([
         Animated.timing(wippen, { toValue: 1, duration: dauer, easing: Easing.inOut(Easing.sin), useNativeDriver: nativ }),
@@ -71,26 +91,35 @@ export function Figur({ pose = 'stehen', groesse = 150, art = 'du', deckkraft = 
     schleife.start();
     return () => schleife.stop();
   }, [pose, wippen]);
-  const hoch = pose === 'jubeln' ? -10 : -3;
-  const schatten = art === 'schatten';
-  const farbe = schatten ? farben.schatten : farben.weiss;
+  const hoch = pose === 'jubeln' || pose === 'flagge' ? -10 : pose === 'schlafen' ? -1 : -3;
+  const bewegung = {
+    transform: [
+      { translateY: wippen.interpolate({ inputRange: [0, 1], outputRange: [0, hoch] }) },
+      { scale: pose === 'atmen' || pose === 'schlafen' ? wippen.interpolate({ inputRange: [0, 1], outputRange: [1, 1.05] }) : 1 },
+      { rotate: pose === 'verheddert' || pose === 'winken' ? wippen.interpolate({ inputRange: [0, 1], outputRange: ['-3deg', '3deg'] }) : '0deg' },
+    ],
+  };
+  if (art === 'du') {
+    // Knäuel: Bild etwas größer als die Box, Füße unten bündig, weiches Koralle-Leuchten dahinter
+    const bild = groesse * 1.2;
+    return (
+      <View style={{ width: groesse, height: groesse * 1.3, alignItems: 'center', justifyContent: 'flex-end', opacity: deckkraft }}>
+        <View pointerEvents="none" style={{ position: 'absolute', bottom: groesse * 0.05, width: bild, height: bild, alignItems: 'center', justifyContent: 'center' }}>
+          <Leuchten groesse={bild * 1.05} farbe={farben.akzent} staerke={0.32} />
+        </View>
+        <Animated.View style={[{ width: bild, height: bild, marginBottom: -groesse * 0.03 }, bewegung]}>
+          <Image source={KNAEUEL[pose]} style={{ width: bild, height: bild }} resizeMode="contain" accessibilityIgnoresInvertColors />
+        </Animated.View>
+      </View>
+    );
+  }
+  const strich = STRICH[pose];
+  const farbe = farben.schatten;
   return (
-    <Animated.View
-      style={{
-        width: groesse,
-        height: groesse * 1.3,
-        transform: [
-          { translateY: wippen.interpolate({ inputRange: [0, 1], outputRange: [0, hoch] }) },
-          { scale: pose === 'atmen' ? wippen.interpolate({ inputRange: [0, 1], outputRange: [1, 1.05] }) : 1 },
-        ],
-      }}
-    >
+    <Animated.View style={[{ width: groesse, height: groesse * 1.3 }, bewegung]}>
       <Svg width={groesse} height={groesse * 1.3} viewBox="0 0 100 130">
-        {/* Leuchten: dieselbe Form dicker und durchsichtig dahinter (Halation) */}
-        {!schatten ? <Form pose={pose} farbe={farben.akzentHell} dicke={11} deckkraft={0.14 * deckkraft} /> : null}
-        {!schatten ? <Form pose={pose} farbe={farbe} dicke={7} deckkraft={0.25 * deckkraft} /> : null}
-        <Form pose={pose} farbe={farbe} dicke={4} deckkraft={(schatten ? 0.55 : 1) * deckkraft} />
-        {pose === 'handy' ? <Rect x={55} y={49} width={9} height={14} rx={2} fill="#CFE3FF" opacity={0.95 * deckkraft} /> : null}
+        <Form pose={strich} farbe={farbe} dicke={4} deckkraft={0.55 * deckkraft} />
+        {strich === 'handy' ? <Rect x={55} y={49} width={9} height={14} rx={2} fill="#CFE3FF" opacity={0.6 * deckkraft} /> : null}
       </Svg>
     </Animated.View>
   );

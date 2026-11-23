@@ -70,7 +70,7 @@ export default function Onboarding() {
           <Zoom key={schritt}>
             <View style={{ alignItems: 'center', justifyContent: 'center' }}>
               <Leuchten groesse={320} farbe={erste ? '#9CC4FF' : farben.morgen} staerke={erste ? 0.22 : 0.35} />
-              <Figur pose={erste ? 'handy' : 'stehen'} groesse={150} />
+              <Figur pose={erste ? 'handy' : 'entwirren'} groesse={150} />
             </View>
           </Zoom>
           <Einblenden verz={300}>
@@ -260,7 +260,7 @@ export default function Onboarding() {
         </View>
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
           <Leuchten groesse={240} staerke={0.25} />
-          <Figur pose="denken" groesse={90} />
+          <Figur pose="verheddert" groesse={140} />
         </View>
         <Txt groesse={12} farbe={farben.textHell} mitte>
           Kein Test und keine Diagnose. Nur ein ehrlicher Blick auf das, was du erlebst.
@@ -566,7 +566,7 @@ function ErsteFlagge({ onSpeichern, onWeiter }: { onSpeichern: (t: string) => vo
           <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 16 }}>
             <Leuchten groesse={280} staerke={0.3} />
             <Einblenden>
-              <KleineFlagge groesse={70} />
+              <Figur pose="flagge" groesse={140} />
             </Einblenden>
             <Einblenden verz={250}>
               <Txt groesse={16} farbe={farben.textLeise} mitte style={{ paddingHorizontal: 20 }}>
