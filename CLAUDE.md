@@ -65,5 +65,5 @@ Kernversprechen: "Wieder klar sehen." Fabrik-App (Hintergrund: `claude-wissen/wi
 - PDF-Export der Einträge als Premium-Grund (gewünscht, später).
 - Texte sprechen von "er/ihm". Raoul (11.11.2026): Entscheidung nach Recherche, welche Pronomen die viralen US-Skripte der Nische nutzen.
 - Hilfe-Nummern für DE, AT, CH in `src/data/hilfe.ts` (Stand 11.11.2026), vor Veröffentlichung prüfen. Kurzliste im Ergebnis zeigt nur DE-Nummern, später nach Land wählen.
-- Datenschutzerklärung, App-Icon = lebendiges Fähnchen (Variante A, `docs/maskottchen-ideen/icon-variante-A.png`, Raoul 23.11.2026: Symbol Fähnchen, in der App das Knäuel), Store-Texte, Support-Adresse aurorealis.apps@gmail.com.
+- Datenschutzerklärung, App-Icon = lebendiges Fähnchen mit Funkeln (Variante B, `docs/maskottchen-ideen/icon-variante-B.png`, Raoul 23.11.2026: Symbol Fähnchen, in der App das Knäuel), Store-Texte, Support-Adresse aurorealis.apps@gmail.com.
 - Einwilligung und PostHog erst, wenn Statistik gewollt ist (Eventnamen aus `wissen/werkzeuge.md`, nie Eintragstexte).
