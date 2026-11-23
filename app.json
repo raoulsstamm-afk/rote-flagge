@@ -19,7 +19,7 @@
     "android": {
       "package": "com.raoulstamm.roteflagge",
       "adaptiveIcon": {
-        "backgroundColor": "#FFF3EA",
+        "backgroundColor": "#1A0B0B",
         "foregroundImage": "./assets/icon.png"
       },
       "predictiveBackGestureEnabled": false,
