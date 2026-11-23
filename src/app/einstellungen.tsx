@@ -7,6 +7,8 @@ import { Zurueck } from '@/components/Symbole';
 import { Txt } from '@/components/Txt';
 import { Bildschirm, Chip, HilfeKarte, Karte, Knopf, Rueckfrage } from '@/components/ui';
 import { entsperren, sperreVerfuegbar } from '@/sperre';
+import { PRONOMEN_WAHL } from '@/data/person';
+import { PHASEN } from '@/data/phasen';
 import { useApp } from '@/state/store';
 import { testApp } from '@/testApp';
 import { farben, verlaeufe } from '@/theme';
@@ -55,6 +57,33 @@ export default function Einstellungen() {
 
       <Karte stil={{ gap: 12 }}>
         <Txt groesse={18} gewicht="serif">
+          Wo stehst du gerade?
+        </Txt>
+        <View style={s.chips}>
+          {PHASEN.map((p) => (
+            <Chip
+              key={p.id}
+              text={p.text}
+              an={z.phase === p.id}
+              onPress={() => {
+                setze({ phase: p.id });
+                if (p.id === 'getrennt' && !z.kontaktpause.start) setze({ phase: p.id, kontaktpause: { ...z.kontaktpause, start: Date.now() } });
+              }}
+            />
+          ))}
+        </View>
+        <Txt groesse={14} farbe={farben.textLeise}>
+          Um wen geht's?
+        </Txt>
+        <View style={s.chips}>
+          {PRONOMEN_WAHL.map((p) => (
+            <Chip key={p.id} text={p.text} an={(z.person?.pronomen ?? 'er') === p.id} onPress={() => setze({ person: { name: z.person?.name ?? '', pronomen: p.id } })} />
+          ))}
+        </View>
+      </Karte>
+
+      <Karte stil={{ gap: 12 }}>
+        <Txt groesse={18} gewicht="serif">
           Tägliche Erinnerung
         </Txt>
         <Txt groesse={14} farbe={farben.textLeise}>
@@ -100,7 +129,7 @@ export default function Einstellungen() {
           Deine Daten
         </Txt>
         <Txt groesse={14} farbe={farben.textLeise}>
-          Alles bleibt nur auf deinem Handy. Kein Konto, kein Server, keine Statistik. Rote Flagge ist ein Tagebuch, keine Therapie und keine Beratung.
+          Alles bleibt nur auf deinem Handy. Kein Konto, keine Statistik. Nur wenn du den KI-Musterbericht einschaltest, gehen deine Einträge kurz an einen Server in der EU und werden nicht gespeichert. Rote Flagge ist ein Tagebuch, keine Therapie und keine Beratung.
         </Txt>
         <Knopf text="Alle Daten löschen" art="glas" klein onPress={() => setLoeschFrage(true)} />
       </Karte>
@@ -150,6 +179,6 @@ export default function Einstellungen() {
 }
 
 const s = StyleSheet.create({
-  zurueck: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.8)', alignItems: 'center', justifyContent: 'center' },
+  zurueck: { width: 40, height: 40, borderRadius: 20, backgroundColor: farben.karte, borderWidth: 1, borderColor: farben.karteRand, alignItems: 'center', justifyContent: 'center' },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
 });

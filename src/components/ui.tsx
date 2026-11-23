@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { hilfeNummern } from '@/data/hilfe';
 import { useApp } from '@/state/store';
 import { farben, schatten, verlaeufe } from '@/theme';
+import { Fleck, Halation, STANDARD_LICHT } from './Licht';
 import { Telefon } from './Symbole';
 import { Txt } from './Txt';
 
@@ -12,9 +13,10 @@ const nativ = Platform.OS !== 'web';
 type Verlauf = readonly [string, string, ...string[]];
 
 // Ganzer Bildschirm mit weichem Verlauf im Hintergrund. unten: Platz für die schwebende Leiste.
-export function Bildschirm({ children, verlauf = verlaeufe.start, scroll, unten = 0, stil }: { children: ReactNode; verlauf?: Verlauf; scroll?: boolean; unten?: number; stil?: ViewStyle }) {
+export function Bildschirm({ children, verlauf = verlaeufe.start, scroll, unten = 0, stil, licht = STANDARD_LICHT }: { children: ReactNode; verlauf?: Verlauf; scroll?: boolean; unten?: number; stil?: ViewStyle; licht?: Fleck[] }) {
   return (
     <LinearGradient colors={verlauf} style={{ flex: 1 }}>
+      <Halation flecken={licht} />
       <SafeAreaView style={{ flex: 1 }} edges={['top', 'left', 'right', 'bottom']}>
         {scroll ? (
           <ScrollView contentContainerStyle={[{ padding: 20, paddingBottom: 30 + unten, gap: 14 }, stil]} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
@@ -44,7 +46,7 @@ export function useFeder() {
 export function Knopf({ text, onPress, art = 'voll', aus, stil, klein }: { text: string; onPress: () => void; art?: 'voll' | 'glas' | 'leise'; aus?: boolean; stil?: ViewStyle; klein?: boolean }) {
   const feder = useFeder();
   const innen = (
-    <Txt gewicht={art === 'leise' ? 'fett' : 'extra'} groesse={klein || art === 'leise' ? 15 : 18} farbe={art === 'voll' ? farben.weiss : art === 'leise' ? farben.textLeise : farben.text} mitte>
+    <Txt gewicht={art === 'leise' ? 'fett' : 'extra'} groesse={klein || art === 'leise' ? 15 : 18} farbe={art === 'voll' ? farben.dunkel : art === 'leise' ? farben.textLeise : farben.text} mitte>
       {text}
     </Txt>
   );
@@ -66,7 +68,7 @@ export function Knopf({ text, onPress, art = 'voll', aus, stil, klein }: { text:
             {innen}
           </LinearGradient>
         ) : (
-          <View style={[s.knopf, klein && s.knopfKlein, art === 'glas' ? { backgroundColor: 'rgba(255,255,255,0.9)', boxShadow: schatten.leise } : { paddingVertical: 10 }]}>{innen}</View>
+          <View style={[s.knopf, klein && s.knopfKlein, art === 'glas' ? { backgroundColor: farben.karte, borderWidth: 1.5, borderColor: farben.karteRand } : { paddingVertical: 10 }]}>{innen}</View>
         )}
       </Pressable>
     </Animated.View>
@@ -76,7 +78,7 @@ export function Knopf({ text, onPress, art = 'voll', aus, stil, klein }: { text:
 // Weiße Karte mit weichem Schatten
 export function Karte({ children, stil, verlauf }: { children: ReactNode; stil?: ViewStyle; verlauf?: Verlauf }) {
   return (
-    <LinearGradient colors={verlauf ?? farben.karteVerlauf} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[s.karte, { boxShadow: verlauf ? undefined : schatten.karte }, stil]}>
+    <LinearGradient colors={verlauf ?? farben.karteVerlauf} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[s.karte, { borderWidth: 1, borderColor: farben.karteRand }, stil]}>
       {children}
     </LinearGradient>
   );
@@ -96,9 +98,9 @@ export function Chip({ text, an, onPress }: { text: string; an?: boolean; onPres
         }}
         accessibilityRole="checkbox"
         accessibilityState={{ checked: !!an }}
-        style={[s.chip, an && { backgroundColor: farben.akzent, borderColor: farben.akzent }]}
+        style={[s.chip, an && { backgroundColor: farben.akzent, borderColor: farben.akzent, boxShadow: schatten.leuchten }]}
       >
-        <Txt groesse={15} gewicht="fett" farbe={an ? farben.weiss : farben.text}>
+        <Txt groesse={15} gewicht="fett" farbe={an ? farben.dunkel : farben.text}>
           {text}
         </Txt>
       </Pressable>
@@ -131,7 +133,7 @@ export function Leiste({ wert }: { wert: number }) {
     Animated.timing(a, { toValue: wert, duration: 380, easing: Easing.out(Easing.cubic), useNativeDriver: false }).start();
   }, [wert, a]);
   return (
-    <View style={{ height: 8, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.7)', overflow: 'hidden' }}>
+    <View style={{ height: 8, borderRadius: 4, backgroundColor: farben.karteRand, overflow: 'hidden' }}>
       <Animated.View style={{ height: 8, width: a.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] }) }}>
         <LinearGradient colors={[farben.korall, farben.akzent]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={{ flex: 1, borderRadius: 4 }} />
       </Animated.View>
@@ -146,7 +148,7 @@ export function Balken({ wert, verz = 0 }: { wert: number; verz?: number }) {
     Animated.timing(a, { toValue: Math.max(0.04, Math.min(1, wert)), duration: 700, delay: verz, easing: Easing.out(Easing.cubic), useNativeDriver: false }).start();
   }, [wert, a, verz]);
   return (
-    <View style={{ height: 12, borderRadius: 6, backgroundColor: 'rgba(184,70,60,0.10)', overflow: 'hidden' }}>
+    <View style={{ height: 12, borderRadius: 6, backgroundColor: farben.karteRand, overflow: 'hidden' }}>
       <Animated.View style={{ height: 12, width: a.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] }) }}>
         <LinearGradient colors={verlaeufe.knopf} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={{ flex: 1, borderRadius: 6 }} />
       </Animated.View>
@@ -217,8 +219,8 @@ const s = StyleSheet.create({
   knopf: { borderRadius: 999, paddingVertical: 17, paddingHorizontal: 22, alignItems: 'center', justifyContent: 'center' },
   knopfKlein: { paddingVertical: 13 },
   karte: { borderRadius: 22, padding: 20 },
-  chip: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.85)', borderWidth: 2, borderColor: 'rgba(255,255,255,0.9)' },
-  schleier: { flex: 1, backgroundColor: 'rgba(74,61,53,0.35)', alignItems: 'center', justifyContent: 'center', padding: 24 },
-  hilfe: { gap: 8, padding: 16, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.85)' },
+  chip: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 999, backgroundColor: farben.karte, borderWidth: 1.5, borderColor: farben.karteRand },
+  schleier: { flex: 1, backgroundColor: 'rgba(5,2,8,0.7)', alignItems: 'center', justifyContent: 'center', padding: 24 },
+  hilfe: { gap: 8, padding: 16, borderRadius: 20, backgroundColor: farben.karte, borderWidth: 1, borderColor: farben.karteRand },
   hilfeZeile: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 4 },
 });

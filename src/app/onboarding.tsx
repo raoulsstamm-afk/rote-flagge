@@ -1,359 +1,374 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { useState } from 'react';
-import { Animated, Pressable, StyleSheet, View } from 'react-native';
+import { ReactNode, useEffect, useRef, useState } from 'react';
+import { Animated, Easing, KeyboardAvoidingView, Platform, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import Svg, { Circle } from 'react-native-svg';
 import { erlaubnisAnfragen } from '@/benachrichtigung';
-import { Flagge, Haken, Zurueck } from '@/components/Symbole';
+import { Zeitrad } from '@/components/Drehrad';
+import { Figur, KleineFlagge, Pose } from '@/components/Figur';
+import { Leuchten } from '@/components/Licht';
+import { Haken, KartenIcon, Schloss, Zurueck } from '@/components/Symbole';
 import { Txt } from '@/components/Txt';
-import { Bildschirm, Chip, Einblenden, HilfeKarte, Karte, Knopf, Leiste, Marke, NurAufDemHandy, useFeder } from '@/components/ui';
-import { kategorieKurz } from '@/data/kategorien';
+import { Bildschirm, Chip, Einblenden, Karte, Knopf, NurAufDemHandy, useFeder } from '@/components/ui';
+import { formen, PRONOMEN_WAHL, Pronomen } from '@/data/person';
+import { Phase, PHASEN } from '@/data/phasen';
 import { ERINNERUNG_TAG, GRATIS_TAGE, PREIS_JAHR, PREIS_MONAT } from '@/data/preise';
-import { Antwort, antwortTexte, ergebnisText, quizAussagen, quizSchwerpunkte, quizTreffer } from '@/data/quiz';
+import { deinMuster, FRAGEN, liste, quizSchwerpunkte, ZIELE } from '@/data/quiz';
 import { useApp } from '@/state/store';
-import { farben, verlaeufe } from '@/theme';
+import { farben, schatten, schrift, verlaeufe } from '@/theme';
 
-// Onboarding: Start, Quiz "Ist das noch normal?", Ergebnis, persönlicher Plan, Erinnerung, harte Paywall.
-// Regel: Jeder Schritt passt ohne Scrollen auf 390 x 844. Kein Auto-Weiter außer bei Quiz-Antworten.
+// Onboarding (Redesign 23.11.2026, Raoul): ein Modus für alle Phasen. Zwei bewegte Intro-Szenen, "Wo stehst du?",
+// "Um wen geht's?", 5 Fragen in gemischten Formaten, Ziel, Auswertung, Ergebnis mit deinem Muster,
+// SOS ausprobieren (echte Nachricht parken), erste Flagge, Plan, Erinnerung, harte Paywall.
+// Regeln: kein Scrollen auf 390 x 844, höchstens 4 Antwortkarten, Weiter-Knopf auf jedem Bildschirm, kein Auto-Weiter.
+// Jede Antwort pflanzt eine kleine Flagge in die Leiste oben.
 
-type Schritt = 'start' | 'quiz' | 'ergebnis' | 'plan' | 'erinnerung' | 'paywall';
-const UHRZEITEN = ['08:00', '12:00', '18:00', '20:00', '21:00', '22:00'];
+type Schritt =
+  | 'intro1'
+  | 'intro2'
+  | 'phase'
+  | 'person'
+  | `frage${number}`
+  | 'ziel'
+  | 'auswertung'
+  | 'ergebnis'
+  | 'ausprobieren'
+  | 'flagge'
+  | 'plan'
+  | 'erinnerung'
+  | 'paywall';
+
+const ABLAUF: Schritt[] = ['intro1', 'intro2', 'phase', 'person', ...FRAGEN.map((_, i) => `frage${i}` as Schritt), 'ziel', 'auswertung', 'ergebnis', 'ausprobieren', 'flagge', 'plan', 'erinnerung', 'paywall'];
+const MIT_LEISTE: Schritt[] = ['phase', 'person', ...FRAGEN.map((_, i) => `frage${i}` as Schritt), 'ziel'];
 
 export default function Onboarding() {
-  const { z, setze, vibriere } = useApp();
-  const [schritt, setSchritt] = useState<Schritt>('start');
-  const [frage, setFrage] = useState(0);
-  const [gewaehlt, setGewaehlt] = useState<Antwort | null>(null);
-  const [uhrzeit, setUhrzeit] = useState('20:00');
-  const [plan, setPlan] = useState<'jahr' | 'monat'>('jahr');
-  const [kaufHinweis, setKaufHinweis] = useState(false);
+  const { z, setze, vibriere, parken, eintragSpeichern, kontaktpauseStarten } = useApp();
+  const [i, setI] = useState(0);
+  const schritt = ABLAUF[i];
+  const f = formen(z.person);
+  const weiter = () => {
+    vibriere('mittel');
+    setI((x) => Math.min(ABLAUF.length - 1, x + 1));
+  };
+  const zurueck = () => setI((x) => Math.max(0, x - 1));
+  const leisteWert = MIT_LEISTE.indexOf(schritt);
 
-  const treffer = quizTreffer(z.quiz);
-  const schwerpunkte = quizSchwerpunkte(z.quiz);
+  const rahmen = (inhalt: ReactNode, knopf: ReactNode) => (
+    <Bildschirm>
+      {leisteWert >= 0 ? <FlaggenLeiste anzahl={MIT_LEISTE.length} gesetzt={leisteWert} onZurueck={zurueck} /> : null}
+      <View style={{ flex: 1, gap: 14 }}>{inhalt}</View>
+      {knopf}
+    </Bildschirm>
+  );
 
-  if (schritt === 'start') {
+  // 1 und 2: bewegte Szenen wie in den Reels
+  if (schritt === 'intro1' || schritt === 'intro2') {
+    const erste = schritt === 'intro1';
     return (
-      <Bildschirm verlauf={verlaeufe.start}>
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', gap: 18 }}>
-          <Einblenden>
-            <View style={s.flaggeKreis}>
-              <Flagge groesse={72} />
+      <Bildschirm>
+        <Pressable style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 18 }} onPress={weiter} accessibilityRole="button">
+          <Zoom key={schritt}>
+            <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+              <Leuchten groesse={320} farbe={erste ? '#9CC4FF' : farben.morgen} staerke={erste ? 0.22 : 0.35} />
+              <Figur pose={erste ? 'handy' : 'stehen'} groesse={150} />
             </View>
-          </Einblenden>
-          <Einblenden verz={150}>
-            <Txt groesse={40} gewicht="serifFett" mitte>
-              Rote Flagge
-            </Txt>
-          </Einblenden>
+          </Zoom>
           <Einblenden verz={300}>
-            <Txt groesse={19} gewicht="serif" mitte style={{ paddingHorizontal: 12 }}>
-              Halte fest, was passiert. Damit du dir selbst wieder glaubst.
+            <Txt groesse={34} gewicht="serifFett" mitte>
+              {erste ? 'Tippen. Löschen.\nWieder tippen.' : 'Du musst nicht\nantworten.'}
             </Txt>
           </Einblenden>
-          <Einblenden verz={450}>
-            <Txt groesse={15} farbe={farben.textLeise} mitte style={{ paddingHorizontal: 20 }}>
-              Dein Beweis-Tagebuch für Beziehungen, die dich verunsichern.
+          <Einblenden verz={500}>
+            <Txt groesse={16} farbe={farben.textLeise} mitte>
+              {erste ? 'Kennst du das?' : 'Rote Flagge hilft dir, klar zu sehen.'}
             </Txt>
           </Einblenden>
-        </View>
-        <Einblenden verz={600} stil={{ gap: 12 }}>
-          <Knopf text="Los geht's" onPress={() => setSchritt('quiz')} />
-          <NurAufDemHandy text="Alles bleibt nur auf deinem Handy. Kein Konto nötig." />
-        </Einblenden>
+        </Pressable>
+        <Knopf text={erste ? 'Kenn ich' : "Los geht's"} onPress={weiter} />
+        {!erste ? <NurAufDemHandy text="Ab 16. Alles bleibt nur auf deinem Handy." /> : null}
       </Bildschirm>
     );
   }
 
-  if (schritt === 'quiz') {
-    const a = quizAussagen[frage];
-    const antworten = (wert: Antwort) => {
-      if (gewaehlt !== null) return;
-      setGewaehlt(wert);
-      setze({ quiz: { ...z.quiz, [a.id]: wert } });
-      setTimeout(() => {
-        setGewaehlt(null);
-        if (frage + 1 < quizAussagen.length) setFrage(frage + 1);
-        else {
-          vibriere('erfolg');
-          setSchritt('ergebnis');
-        }
-      }, 320);
-    };
-    return (
-      <Bildschirm verlauf={verlaeufe.start}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-          <Pressable
-            onPress={() => (frage > 0 ? setFrage(frage - 1) : setSchritt('start'))}
-            hitSlop={12}
-            accessibilityRole="button"
-            accessibilityLabel="Zurück"
-          >
-            <Zurueck />
-          </Pressable>
-          <View style={{ flex: 1 }}>
-            <Leiste wert={(frage + 1) / quizAussagen.length} />
-          </View>
-        </View>
-        <Txt groesse={14} gewicht="fett" farbe={farben.textLeise}>
-          Ist das noch normal? · {frage + 1} von {quizAussagen.length}
-        </Txt>
-        <Einblenden key={a.id}>
-          <Karte>
-            <Txt groesse={23} gewicht="serif">
-              "{a.text}"
-            </Txt>
-          </Karte>
-        </Einblenden>
-        <Txt groesse={15} farbe={farben.textLeise}>
-          Kennst du das?
-        </Txt>
+  if (schritt === 'phase') {
+    return rahmen(
+      <>
+        <Titel>Wo stehst du gerade?</Titel>
         <View style={{ gap: 10 }}>
-          {antwortTexte.map((t) => (
-            <AntwortKnopf key={t.wert} text={t.text} an={gewaehlt === t.wert} onPress={() => antworten(t.wert)} />
-          ))}
-        </View>
-        <View style={{ flex: 1 }} />
-        <NurAufDemHandy text="Deine Antworten bleiben auf deinem Handy." />
-      </Bildschirm>
-    );
-  }
-
-  if (schritt === 'ergebnis') {
-    const e = ergebnisText(treffer);
-    return (
-      <Bildschirm verlauf={verlaeufe.muster}>
-        <Einblenden>
-          <Marke text={`Dein Ergebnis: ${treffer} von ${quizAussagen.length}`} />
-        </Einblenden>
-        <Einblenden verz={120} stil={{ flexDirection: 'row', alignItems: 'baseline', gap: 8 }}>
-          <Txt groesse={72} gewicht="serifFett" farbe={farben.akzent}>
-            {treffer}
-          </Txt>
-          <Txt groesse={20} gewicht="serif" farbe={farben.textLeise}>
-            von {quizAussagen.length} kennst du
-          </Txt>
-        </Einblenden>
-        <Einblenden verz={260}>
-          <Txt groesse={27} gewicht="serifFett">
-            {e.titel}
-          </Txt>
-        </Einblenden>
-        <Einblenden verz={400}>
-          <Txt groesse={16} farbe={farben.textLeise}>
-            {e.text}
-          </Txt>
-        </Einblenden>
-        <Einblenden verz={520}>
-          <Txt groesse={13} farbe={farben.textLeise}>
-            Kein Test und keine Diagnose. Nur ein ehrlicher Blick auf das, was du erlebst.
-          </Txt>
-        </Einblenden>
-        <View style={{ flex: 1 }} />
-        <Einblenden verz={640}>
-          <HilfeKarte kurz />
-        </Einblenden>
-        <Knopf text="Zu meinem Plan" onPress={() => setSchritt('plan')} />
-      </Bildschirm>
-    );
-  }
-
-  if (schritt === 'plan') {
-    const fokus = schwerpunkte.length ? schwerpunkte.map(kategorieKurz).join(', ') : 'alles, was dich verunsichert';
-    const etappen = [
-      { wann: 'Ab heute', titel: 'Festhalten', text: 'Erzähl in einer Minute, was passiert ist. Das Datum kommt automatisch.' },
-      { wann: 'Nach 4 Wochen', titel: 'Muster sehen', text: `Wir achten besonders auf: ${fokus}.` },
-      { wann: 'Wenn es brennt', titel: "Schreib's hier statt ihm", text: 'Nachricht 24 Stunden parken, dann mit klarem Kopf entscheiden.' },
-    ];
-    return (
-      <Bildschirm verlauf={verlaeufe.tagebuch}>
-        <Einblenden>
-          <Marke text="Dein persönlicher Plan" />
-        </Einblenden>
-        <Einblenden verz={100}>
-          <Txt groesse={28} gewicht="serifFett">
-            So wird es wieder klar.
-          </Txt>
-        </Einblenden>
-        <View style={{ gap: 12, marginTop: 4 }}>
-          {etappen.map((e, i) => (
-            <Einblenden key={e.titel} verz={250 + i * 180}>
-              <Karte stil={{ flexDirection: 'row', gap: 14, padding: 16 }}>
-                <View style={s.nummer}>
-                  <Txt groesse={16} gewicht="extra" farbe={farben.weiss}>
-                    {i + 1}
-                  </Txt>
-                </View>
-                <View style={{ flex: 1, gap: 2 }}>
-                  <Txt groesse={13} gewicht="extra" farbe={farben.akzent}>
-                    {e.wann.toUpperCase()}
-                  </Txt>
-                  <Txt groesse={19} gewicht="serif">
-                    {e.titel}
-                  </Txt>
-                  <Txt groesse={15} farbe={farben.textLeise}>
-                    {e.text}
-                  </Txt>
-                </View>
-              </Karte>
+          {PHASEN.map((p, k) => (
+            <Einblenden key={p.id} verz={80 * k}>
+              <AntwortKarte text={p.text} icon={p.icon} an={z.phase === p.id} onPress={() => setze({ phase: p.id as Phase })} />
             </Einblenden>
           ))}
         </View>
-        <View style={{ flex: 1 }} />
-        <NurAufDemHandy />
-        <Knopf text="Klingt gut" onPress={() => setSchritt('erinnerung')} />
-      </Bildschirm>
+      </>,
+      <Knopf text="Weiter" aus={!z.phase} onPress={weiter} />,
     );
   }
 
-  if (schritt === 'erinnerung') {
-    const weiter = async (mit: boolean) => {
-      if (mit) await erlaubnisAnfragen();
-      setze({ erinnerung: mit ? uhrzeit : null });
-      setSchritt('paywall');
-    };
+  if (schritt === 'person') {
     return (
-      <Bildschirm verlauf={verlaeufe.start}>
-        <Einblenden>
-          <Marke text="Erinnerung" />
-        </Einblenden>
-        <Einblenden verz={100}>
-          <Txt groesse={28} gewicht="serifFett">
-            Wann soll ich dich kurz erinnern?
-          </Txt>
-        </Einblenden>
-        <Einblenden verz={220}>
-          <Txt groesse={16} farbe={farben.textLeise}>
-            Einmal am Tag, ganz leise. Was nicht festgehalten wird, verschwimmt schnell.
-          </Txt>
-        </Einblenden>
-        <Einblenden verz={340} stil={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 6 }}>
-          {UHRZEITEN.map((u) => (
-            <Chip key={u} text={`${u} Uhr`} an={u === uhrzeit} onPress={() => setUhrzeit(u)} />
-          ))}
-        </Einblenden>
-        <Einblenden verz={460}>
-          <Karte stil={{ padding: 16, gap: 4 }}>
-            <Txt groesse={13} gewicht="extra" farbe={farben.textLeise}>
-              SO SIEHT DIE NACHRICHT AUS
-            </Txt>
-            <Txt groesse={16} gewicht="extra">
-              Kurzer Moment für dich
-            </Txt>
-            <Txt groesse={15} farbe={farben.textLeise}>
-              Ist heute etwas passiert, das du festhalten willst?
-            </Txt>
+      <Bildschirm>
+        <FlaggenLeiste anzahl={MIT_LEISTE.length} gesetzt={leisteWert} onZurueck={zurueck} />
+        <KeyboardAvoidingView style={{ flex: 1, gap: 12 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+          <Titel>Um wen geht's?</Titel>
+          <View style={{ gap: 10 }}>
+            {PRONOMEN_WAHL.map((p, k) => (
+              <Einblenden key={p.id} verz={80 * k}>
+                <AntwortKarte
+                  text={p.text}
+                  icon={p.id === 'er' ? 'mann' : p.id === 'sie' ? 'frau' : 'offen'}
+                  an={z.person?.pronomen === p.id}
+                  onPress={() => setze({ person: { name: z.person?.name ?? '', pronomen: p.id as Pronomen } })}
+                />
+              </Einblenden>
+            ))}
+          </View>
+          <Karte stil={{ paddingVertical: 4, paddingHorizontal: 18 }}>
+            <TextInput
+              value={z.person?.name ?? ''}
+              onChangeText={(t) => setze({ person: { pronomen: z.person?.pronomen ?? 'er', name: t.slice(0, 24) } })}
+              placeholder="Name oder Spitzname (freiwillig)"
+              placeholderTextColor={farben.textHell}
+              style={s.feld}
+            />
           </Karte>
-        </Einblenden>
-        <Txt groesse={13} farbe={farben.textLeise}>
-          Die Nachricht verrät nichts über deine Einträge, falls jemand auf dein Handy schaut.
-        </Txt>
-        <View style={{ flex: 1 }} />
-        <Knopf text="Erinnerung einschalten" onPress={() => weiter(true)} />
-        <Knopf text="Lieber ohne" art="leise" onPress={() => weiter(false)} />
+          <View style={{ flex: 1 }} />
+          <Knopf text="Weiter" aus={!z.person?.pronomen} onPress={weiter} />
+        </KeyboardAvoidingView>
       </Bildschirm>
     );
   }
 
-  // Harte Paywall (nur Optik, noch keine echten Käufe)
-  const fertig = () => {
-    vibriere('erfolg');
-    setze({ onboardingFertig: true });
-    router.replace('/tagebuch');
-  };
-  const zeitleiste = [
-    { farbe: farben.akzent, fett: 'Heute:', text: 'alles freigeschaltet' },
-    { farbe: farben.korall, fett: `Tag ${ERINNERUNG_TAG}:`, text: 'wir erinnern dich' },
-    { farbe: farben.lavendel, fett: `Tag ${GRATIS_TAGE}:`, text: 'dein Abo startet' },
-  ];
-  return (
-    <Bildschirm verlauf={verlaeufe.muster} stil={{ gap: 12 }}>
-      <Marke text={`Dein Ergebnis: ${treffer} von ${quizAussagen.length}`} />
-      <Txt groesse={26} gewicht="serifFett">
-        Du bildest dir das nicht ein. Lass es uns festhalten.
-      </Txt>
-      <View style={{ gap: 8 }}>
-        {['Beweis-Tagebuch mit Sprache', 'Deine Muster der letzten 4 Wochen', "Schreib's hier statt ihm, wenn es brennt"].map((t) => (
-          <View key={t} style={s.vorteil}>
-            <View style={s.hakenKlein}>
-              <Haken groesse={14} />
-            </View>
-            <Txt groesse={15}>{t}</Txt>
+  if (schritt.startsWith('frage')) {
+    const q = FRAGEN[Number(schritt.slice(5))];
+    const wert = z.quiz[q.id];
+    const setzeWert = (v: string | string[] | number) => setze({ quiz: { ...z.quiz, [q.id]: v } });
+    if (q.art === 'karten') {
+      return rahmen(
+        <>
+          <Titel>{q.titel(f)}</Titel>
+          <View style={{ gap: 10 }}>
+            {q.optionen.map((o, k) => (
+              <Einblenden key={o.id} verz={80 * k}>
+                <AntwortKarte text={o.text(f)} icon={o.icon} an={wert === o.id} onPress={() => setzeWert(o.id)} />
+              </Einblenden>
+            ))}
           </View>
-        ))}
-      </View>
-      <LinearGradient colors={farben.musterVerlauf} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.zeitleiste}>
-        {zeitleiste.map((p) => (
-          <View key={p.fett} style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
-            <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: p.farbe }} />
-            <Txt groesse={14}>
-              <Txt groesse={14} gewicht="extra">
-                {p.fett}
-              </Txt>{' '}
-              {p.text}
-            </Txt>
-          </View>
-        ))}
-      </LinearGradient>
-      <PlanKarte
-        an={plan === 'jahr'}
-        titel="Jährlich"
-        text={`${GRATIS_TAGE} Tage gratis, dann ${PREIS_JAHR}/Jahr`}
-        marke="Beliebt"
-        onPress={() => setPlan('jahr')}
-      />
-      <PlanKarte an={plan === 'monat'} titel="Monatlich" text={`${PREIS_MONAT}/Monat`} onPress={() => setPlan('monat')} />
-      <View style={{ flex: 1 }} />
-      {kaufHinweis ? (
-        <Txt groesse={13} farbe={farben.akzent} mitte>
-          Echte Käufe kommen später. Zum Testen: Weiter (Test).
-        </Txt>
-      ) : null}
-      <Knopf text={plan === 'jahr' ? `${GRATIS_TAGE} Tage gratis starten` : 'Monatlich starten'} onPress={() => setKaufHinweis(true)} />
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Txt groesse={12} farbe={farben.textLeise}>
-          Jederzeit kündbar · Wiederherstellen
-        </Txt>
-        <Pressable onPress={fertig} hitSlop={10} accessibilityRole="button">
-          <Txt groesse={14} gewicht="extra" farbe={farben.akzent}>
-            Weiter (Test)
+        </>,
+        <Knopf text="Weiter" aus={!wert} onPress={weiter} />,
+      );
+    }
+    if (q.art === 'chips') {
+      const gewaehlt = liste(z.quiz, q.id);
+      return rahmen(
+        <>
+          <Titel>{q.titel(f)}</Titel>
+          <Txt groesse={15} farbe={farben.textLeise} style={{ marginTop: -6 }}>
+            {q.unter}
           </Txt>
-        </Pressable>
-      </View>
-    </Bildschirm>
-  );
-}
-
-function AntwortKnopf({ text, an, onPress }: { text: string; an: boolean; onPress: () => void }) {
-  const feder = useFeder();
-  return (
-    <Animated.View style={feder.stil}>
-      <Pressable
-        onPressIn={feder.rein}
-        onPressOut={feder.raus}
-        onPress={() => {
-          feder.vibriere('mittel');
-          onPress();
-        }}
-        accessibilityRole="button"
-      >
-        {an ? (
-          <LinearGradient colors={verlaeufe.knopf} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.antwort}>
-            <Txt groesse={17} gewicht="extra" farbe={farben.weiss} mitte>
-              {text}
-            </Txt>
-          </LinearGradient>
-        ) : (
-          <View style={[s.antwort, { backgroundColor: 'rgba(255,255,255,0.8)' }]}>
-            <Txt groesse={17} gewicht="fett" mitte>
-              {text}
-            </Txt>
+          <View style={s.chips}>
+            {q.optionen.map((o, k) => (
+              <Einblenden key={o.id} verz={50 * k}>
+                <Chip text={o.text(f)} an={gewaehlt.includes(o.id)} onPress={() => setzeWert(gewaehlt.includes(o.id) ? gewaehlt.filter((x) => x !== o.id) : [...gewaehlt, o.id])} />
+              </Einblenden>
+            ))}
           </View>
-        )}
-      </Pressable>
-    </Animated.View>
+        </>,
+        <Knopf text="Weiter" aus={gewaehlt.length === 0} onPress={weiter} />,
+      );
+    }
+    const stufe = typeof wert === 'number' ? wert : 2;
+    return rahmen(
+      <>
+        <Titel>{q.titel(f)}</Titel>
+        <View style={{ flex: 1, justifyContent: 'center', gap: 28 }}>
+          <View style={{ alignItems: 'center', height: 180, justifyContent: 'center' }}>
+            <Leuchten groesse={200 + stufe * 30} staerke={0.18 + stufe * 0.05} />
+            <Figur pose={stufe >= 3 ? 'handy' : stufe >= 2 ? 'denken' : 'stehen'} groesse={100} />
+          </View>
+          <Txt groesse={30} gewicht="serifFett" mitte farbe={farben.akzent}>
+            {q.stufen[stufe]}
+          </Txt>
+          <Regler stufen={q.stufen.length} wert={stufe} onWechsel={(v) => setzeWert(v)} />
+        </View>
+      </>,
+      <Knopf
+        text="Weiter"
+        onPress={() => {
+          if (typeof wert !== 'number') setzeWert(stufe);
+          weiter();
+        }}
+      />,
+    );
+  }
+
+  if (schritt === 'ziel') {
+    return rahmen(
+      <>
+        <Titel>Wie viele Tage willst du dir geben?</Titel>
+        <Txt groesse={15} farbe={farben.textLeise} style={{ marginTop: -6 }}>
+          {z.phase === 'getrennt' ? 'Tage Kontaktpause. Du kannst jederzeit sanft neu anfangen.' : 'Tage, an denen du bei dir bleibst.'}
+        </Txt>
+        <View style={{ gap: 10 }}>
+          {ZIELE.map((t, k) => (
+            <Einblenden key={t} verz={80 * k}>
+              <AntwortKarte text={`${t} Tage`} icon="ziel" an={z.ziel === t} onPress={() => setze({ ziel: t })} />
+            </Einblenden>
+          ))}
+        </View>
+      </>,
+      <Knopf text="Weiter" onPress={weiter} />,
+    );
+  }
+
+  if (schritt === 'auswertung') return <Auswertung onWeiter={weiter} />;
+
+  if (schritt === 'ergebnis') {
+    const m = deinMuster(z.quiz);
+    const danach = FRAGEN[0].art === 'karten' ? FRAGEN[0].optionen.find((o) => o.id === z.quiz.danach)?.text(f) : null;
+    const schwer = FRAGEN.find((q) => q.id === 'schwer');
+    const schwerText = schwer && schwer.art === 'chips' ? liste(z.quiz, 'schwer').map((id) => schwer.optionen.find((o) => o.id === id)?.text(f)).filter(Boolean)[0] : null;
+    const phase = PHASEN.find((p) => p.id === z.phase)?.text;
+    return (
+      <Bildschirm>
+        <Einblenden>
+          <Txt groesse={14} gewicht="extra" farbe={farben.akzent} style={{ letterSpacing: 1 }}>
+            DEIN MUSTER
+          </Txt>
+        </Einblenden>
+        <Einblenden verz={120}>
+          <Txt groesse={38} gewicht="serifFett">
+            {m.name}
+          </Txt>
+        </Einblenden>
+        <Einblenden verz={240}>
+          <Txt groesse={17} farbe={farben.textLeise}>
+            {m.satz}
+          </Txt>
+        </Einblenden>
+        <View style={s.bento}>
+          <Einblenden verz={380} stil={{ width: '100%' }}>
+            <Kachel titel="Gerade" text={phase ?? ''} />
+          </Einblenden>
+          <Einblenden verz={480} stil={{ width: '48.5%' }}>
+            <Kachel titel="Danach" text={danach ?? 'Mal so, mal so'} gross />
+          </Einblenden>
+          <Einblenden verz={580} stil={{ width: '48.5%' }}>
+            <Kachel titel="Am schwersten" text={schwerText ?? 'Abends'} gross />
+          </Einblenden>
+        </View>
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+          <Leuchten groesse={240} staerke={0.25} />
+          <Figur pose="denken" groesse={90} />
+        </View>
+        <Txt groesse={12} farbe={farben.textHell} mitte>
+          Kein Test und keine Diagnose. Nur ein ehrlicher Blick auf das, was du erlebst.
+        </Txt>
+        <Knopf text="Weiter" onPress={weiter} />
+      </Bildschirm>
+    );
+  }
+
+  if (schritt === 'ausprobieren') return <Ausprobieren f={f} onParken={(t) => parken(t)} onWeiter={weiter} />;
+
+  if (schritt === 'flagge')
+    return (
+      <ErsteFlagge
+        onSpeichern={(t) => {
+          eintragSpeichern({ text: t, gefuehle: [], kategorien: quizSchwerpunkte(z.quiz).slice(0, 1), waerme: null });
+        }}
+        onWeiter={weiter}
+      />
+    );
+
+  if (schritt === 'plan') {
+    const zurueckWunsch = FRAGEN.find((q) => q.id === 'zurueck');
+    const wunsch = zurueckWunsch && zurueckWunsch.art === 'chips' ? liste(z.quiz, 'zurueck').map((id) => zurueckWunsch.optionen.find((o) => o.id === id)?.text(f)).filter(Boolean)[0] : null;
+    const schwer = FRAGEN.find((q) => q.id === 'schwer');
+    const schwerText = schwer && schwer.art === 'chips' ? liste(z.quiz, 'schwer').map((id) => schwer.optionen.find((o) => o.id === id)?.text(f)).filter(Boolean)[0] : null;
+    const etappen = [
+      { wann: 'Heute', text: 'Deine erste Flagge steht. Die Nacht beginnt.' },
+      { wann: 'Tag 7', text: schwerText ? `${schwerText}: du schreibst hier statt ${f.ihm}.` : `Du schreibst hier statt ${f.ihm}.` },
+      { wann: 'Tag 14', text: 'Deine Heiß-kalt-Kurve zeigt, was sich wiederholt.' },
+      { wann: `Tag ${z.ziel}`, text: wunsch ? `${wunsch} ist wieder da.` : 'Du siehst wieder klar.' },
+    ];
+    return (
+      <Bildschirm>
+        <Titel>Dein Weg</Titel>
+        <View style={{ gap: 0, marginTop: 4 }}>
+          {etappen.map((e, k) => (
+            <Einblenden key={e.wann} verz={150 + k * 220} stil={{ flexDirection: 'row', gap: 14 }}>
+              <View style={{ alignItems: 'center', width: 26 }}>
+                <View style={[s.punkt, k === 0 && { backgroundColor: farben.akzent, boxShadow: schatten.leuchten }]} />
+                {k < etappen.length - 1 ? <View style={{ width: 2, flex: 1, backgroundColor: farben.karteRand, marginVertical: 4 }} /> : null}
+              </View>
+              <View style={{ flex: 1, paddingBottom: 22, gap: 2 }}>
+                <Txt groesse={18} gewicht="extra" farbe={k === 0 ? farben.akzent : farben.text}>
+                  {e.wann}
+                </Txt>
+                <Txt groesse={15} farbe={farben.textLeise}>
+                  {e.text}
+                </Txt>
+              </View>
+            </Einblenden>
+          ))}
+        </View>
+        <View style={{ flex: 1, alignItems: 'flex-end', justifyContent: 'flex-end' }}>
+          <Figur pose="zeigen" groesse={80} />
+        </View>
+        <Knopf text="Weiter" onPress={weiter} />
+      </Bildschirm>
+    );
+  }
+
+  if (schritt === 'erinnerung') return <Erinnerung onWeiter={weiter} />;
+
+  return (
+    <Paywall
+      onFertig={() => {
+        vibriere('erfolg');
+        if (z.phase === 'getrennt' && !z.kontaktpause.start) kontaktpauseStarten();
+        setze({ onboardingFertig: true });
+        router.replace('/heute');
+      }}
+    />
   );
 }
 
-function PlanKarte({ an, titel, text, marke, onPress }: { an: boolean; titel: string; text: string; marke?: string; onPress: () => void }) {
+function Titel({ children }: { children: ReactNode }) {
+  return (
+    <Einblenden>
+      <Txt groesse={30} gewicht="serifFett">
+        {children}
+      </Txt>
+    </Einblenden>
+  );
+}
+
+// Fortschritt als Flaggen: jede beantwortete Frage pflanzt eine kleine Flagge
+function FlaggenLeiste({ anzahl, gesetzt, onZurueck }: { anzahl: number; gesetzt: number; onZurueck: () => void }) {
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, height: 34 }}>
+      <Pressable onPress={onZurueck} hitSlop={14} accessibilityRole="button" accessibilityLabel="Zurück" style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center' }}>
+        <Zurueck farbe={farben.textLeise} />
+      </Pressable>
+      <View style={{ flex: 1, flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', height: 30 }}>
+        {Array.from({ length: anzahl }, (_, k) =>
+          k < gesetzt ? (
+            <Einblenden key={k}>
+              <KleineFlagge groesse={16} wehen={k === gesetzt - 1} />
+            </Einblenden>
+          ) : (
+            <View key={k} style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: k === gesetzt ? farben.akzent : farben.karteRand, marginBottom: 2 }} />
+          ),
+        )}
+      </View>
+    </View>
+  );
+}
+
+function AntwortKarte({ text, icon, an, onPress }: { text: string; icon: string; an: boolean; onPress: () => void }) {
   const feder = useFeder();
   return (
     <Animated.View style={feder.stil}>
@@ -366,39 +381,391 @@ function PlanKarte({ an, titel, text, marke, onPress }: { an: boolean; titel: st
         }}
         accessibilityRole="radio"
         accessibilityState={{ selected: an }}
-        style={[s.plan, an ? s.planAn : null]}
+        style={[s.karte, an && s.karteAn]}
       >
-        <View style={{ flex: 1 }}>
-          <Txt groesse={16} gewicht="extra">
-            {titel}
-          </Txt>
-          <Txt groesse={13} farbe={farben.textLeise}>
-            {text}
-          </Txt>
+        <View style={s.icon}>
+          <KartenIcon name={icon} groesse={28} farbe={an ? farben.akzent : farben.textLeise} />
         </View>
-        {marke ? (
-          <View style={s.marke}>
-            <Txt groesse={12} gewicht="extra" farbe={farben.weiss}>
-              {marke}
+        <Txt groesse={18} gewicht="extra" style={{ flex: 1 }}>
+          {text}
+        </Txt>
+        <View style={[s.haken, an && { backgroundColor: farben.akzent, borderColor: farben.akzent }]}>{an ? <Haken groesse={15} farbe={farben.dunkel} /> : null}</View>
+      </Pressable>
+    </Animated.View>
+  );
+}
+
+function Kachel({ titel, text, gross }: { titel: string; text: string; gross?: boolean }) {
+  return (
+    <Karte stil={{ gap: 4, padding: 16, minHeight: gross ? 120 : 0 }}>
+      <Txt groesse={12} gewicht="extra" farbe={farben.textHell} style={{ letterSpacing: 1 }}>
+        {titel.toUpperCase()}
+      </Txt>
+      <Txt groesse={18} gewicht="extra">
+        {text}
+      </Txt>
+    </Karte>
+  );
+}
+
+// Regler mit 5 Stufen: antippen oder ziehen
+function Regler({ stufen, wert, onWechsel }: { stufen: number; wert: number; onWechsel: (v: number) => void }) {
+  const { vibriere } = useApp();
+  const [breite, setBreite] = useState(0);
+  const setzeAus = (x: number) => {
+    if (!breite) return;
+    const v = Math.max(0, Math.min(stufen - 1, Math.round((x / breite) * (stufen - 1))));
+    if (v !== wert) {
+      vibriere('tick');
+      onWechsel(v);
+    }
+  };
+  return (
+    <View
+      onLayout={(e) => setBreite(e.nativeEvent.layout.width)}
+      onStartShouldSetResponder={() => true}
+      onMoveShouldSetResponder={() => true}
+      onResponderGrant={(e) => setzeAus(e.nativeEvent.locationX)}
+      onResponderMove={(e) => setzeAus(e.nativeEvent.locationX)}
+      style={{ height: 48, justifyContent: 'center' }}
+    >
+      <View style={{ height: 10, borderRadius: 5, backgroundColor: farben.karteRand }}>
+        <LinearGradient colors={verlaeufe.knopf} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={{ height: 10, borderRadius: 5, width: `${(wert / (stufen - 1)) * 100}%` }} />
+      </View>
+      <View pointerEvents="none" style={{ position: 'absolute', left: breite ? (wert / (stufen - 1)) * breite - 18 : 0, width: 36, height: 36, borderRadius: 18, backgroundColor: farben.weiss, boxShadow: schatten.leuchten }} />
+    </View>
+  );
+}
+
+// Zoom-Auftritt für die ersten Bildschirme
+function Zoom({ children }: { children: ReactNode }) {
+  const a = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.timing(a, { toValue: 1, duration: 900, easing: Easing.out(Easing.cubic), useNativeDriver: Platform.OS !== 'web' }).start();
+  }, [a]);
+  return <Animated.View style={{ opacity: a, transform: [{ scale: a.interpolate({ inputRange: [0, 1], outputRange: [1.35, 1] }) }] }}>{children}</Animated.View>;
+}
+
+// Auswertung: der Kreis füllt sich, dann erscheint Weiter
+function Auswertung({ onWeiter }: { onWeiter: () => void }) {
+  const { vibriere } = useApp();
+  const [prozent, setProzent] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setProzent((p) => (p >= 100 ? 100 : p + 2)), 40);
+    return () => clearInterval(t);
+  }, []);
+  useEffect(() => {
+    if (prozent === 100) vibriere('erfolg');
+    else if (prozent % 10 === 0) vibriere('tick');
+  }, [prozent, vibriere]);
+  const r = 80;
+  const u = 2 * Math.PI * r;
+  const zeilen = ['Deine Antworten', 'Deine schwersten Momente', 'Dein Muster'];
+  return (
+    <Bildschirm>
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 22 }}>
+        <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+          <Leuchten groesse={300} staerke={0.15 + prozent / 400} />
+          <Svg width={200} height={200} style={{ transform: [{ rotate: '-90deg' }] }}>
+            <Circle cx={100} cy={100} r={r} stroke={farben.karteRand} strokeWidth={10} fill="none" />
+            <Circle cx={100} cy={100} r={r} stroke={farben.akzent} strokeWidth={10} fill="none" strokeDasharray={`${u}`} strokeDashoffset={u * (1 - prozent / 100)} strokeLinecap="round" />
+          </Svg>
+          <View style={{ position: 'absolute' }}>
+            <Txt groesse={42} gewicht="serifFett">{`${prozent}%`}</Txt>
+          </View>
+        </View>
+        <Txt groesse={26} gewicht="serifFett" mitte>
+          {prozent < 100 ? 'Ich schaue mir das an' : 'Fertig.'}
+        </Txt>
+        <View style={{ gap: 8 }}>
+          {zeilen.map((t, k) => (
+            <View key={t} style={{ flexDirection: 'row', gap: 10, alignItems: 'center', opacity: prozent > (k + 1) * 30 ? 1 : 0.35 }}>
+              <View style={[s.haken, prozent > (k + 1) * 30 && { backgroundColor: farben.akzent, borderColor: farben.akzent }]}>{prozent > (k + 1) * 30 ? <Haken groesse={14} farbe={farben.dunkel} /> : null}</View>
+              <Txt groesse={16} gewicht="fett">
+                {t}
+              </Txt>
+            </View>
+          ))}
+        </View>
+      </View>
+      <Knopf text="Mein Ergebnis" aus={prozent < 100} onPress={onWeiter} />
+    </Bildschirm>
+  );
+}
+
+// SOS ausprobieren (Pfotenpost-Prinzip): echte Nachricht parken, erster Erfolg in der ersten Minute
+function Ausprobieren({ f, onParken, onWeiter }: { f: ReturnType<typeof formen>; onParken: (t: string) => void; onWeiter: () => void }) {
+  const { vibriere } = useApp();
+  const [text, setText] = useState('');
+  const [geparkt, setGeparkt] = useState(false);
+  return (
+    <Bildschirm>
+      <KeyboardAvoidingView style={{ flex: 1, gap: 14 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <Titel>{geparkt ? 'Liegt sicher hier.' : `Was würdest du ${f.ihm} gerade schreiben?`}</Titel>
+        {geparkt ? (
+          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 16 }}>
+            <Leuchten groesse={280} staerke={0.28} />
+            <Einblenden>
+              <View style={s.schloss}>
+                <Schloss groesse={44} farbe={farben.dunkel} />
+              </View>
+            </Einblenden>
+            <Einblenden verz={200}>
+              <Txt groesse={18} gewicht="fett" mitte style={{ paddingHorizontal: 20 }}>
+                {`${f.Er} bekommt nichts. Morgen entscheidest du mit klarem Kopf.`}
+              </Txt>
+            </Einblenden>
+            <Einblenden verz={350}>
+              <Txt groesse={14} farbe={farben.textHell} mitte>
+                Genau so funktioniert dein SOS-Knopf.
+              </Txt>
+            </Einblenden>
+          </View>
+        ) : (
+          <>
+            <Karte stil={{ padding: 16, minHeight: 140 }}>
+              <TextInput value={text} onChangeText={setText} multiline placeholder="Ich vermiss dich. Können wir reden?" placeholderTextColor={farben.textHell} style={[s.feld, { minHeight: 110 }]} textAlignVertical="top" />
+            </Karte>
+            <Txt groesse={14} farbe={farben.textHell}>
+              Probier es aus. Die App schickt nie etwas ab.
+            </Txt>
+            <View style={{ flex: 1 }} />
+          </>
+        )}
+        {geparkt ? (
+          <Knopf text="Weiter" onPress={onWeiter} />
+        ) : (
+          <>
+            <Knopf
+              text="24 Stunden parken"
+              aus={!text.trim()}
+              onPress={() => {
+                onParken(text.trim());
+                vibriere('erfolg');
+                setGeparkt(true);
+              }}
+            />
+            <Knopf text="Überspringen" art="leise" onPress={onWeiter} />
+          </>
+        )}
+      </KeyboardAvoidingView>
+    </Bildschirm>
+  );
+}
+
+// Erste Flagge: ein Satz, der wehgetan hat. Erscheint später im SOS in deinen eigenen Worten.
+function ErsteFlagge({ onSpeichern, onWeiter }: { onSpeichern: (t: string) => void; onWeiter: () => void }) {
+  const { vibriere } = useApp();
+  const [text, setText] = useState('');
+  const [fertig, setFertig] = useState(false);
+  return (
+    <Bildschirm>
+      <KeyboardAvoidingView style={{ flex: 1, gap: 14 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <Titel>{fertig ? 'Deine erste Flagge steht.' : 'Was hat dir zuletzt wehgetan?'}</Titel>
+        {fertig ? (
+          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 16 }}>
+            <Leuchten groesse={280} staerke={0.3} />
+            <Einblenden>
+              <KleineFlagge groesse={70} />
+            </Einblenden>
+            <Einblenden verz={250}>
+              <Txt groesse={16} farbe={farben.textLeise} mitte style={{ paddingHorizontal: 20 }}>
+                Wenn du schwach wirst, zeige ich sie dir. In deinen eigenen Worten.
+              </Txt>
+            </Einblenden>
+          </View>
+        ) : (
+          <>
+            <Txt groesse={15} farbe={farben.textLeise} style={{ marginTop: -6 }}>
+              Ein Satz reicht.
+            </Txt>
+            <Karte stil={{ padding: 16, minHeight: 130 }}>
+              <TextInput value={text} onChangeText={setText} multiline placeholder="Zum Beispiel: Drei Tage keine Antwort, dann so getan, als wäre nichts." placeholderTextColor={farben.textHell} style={[s.feld, { minHeight: 100 }]} textAlignVertical="top" />
+            </Karte>
+            <View style={{ flex: 1 }} />
+          </>
+        )}
+        {fertig ? (
+          <Knopf text="Weiter" onPress={onWeiter} />
+        ) : (
+          <>
+            <Knopf
+              text="Flagge setzen"
+              aus={!text.trim()}
+              onPress={() => {
+                onSpeichern(text.trim());
+                vibriere('erfolg');
+                setFertig(true);
+              }}
+            />
+            <Knopf text="Später" art="leise" onPress={onWeiter} />
+          </>
+        )}
+      </KeyboardAvoidingView>
+    </Bildschirm>
+  );
+}
+
+function Erinnerung({ onWeiter }: { onWeiter: () => void }) {
+  const { setze, vibriere } = useApp();
+  const [uhr, setUhr] = useState('21:30');
+  const weiter = async (mit: boolean) => {
+    if (mit) await erlaubnisAnfragen();
+    setze({ erinnerung: mit ? uhr : null });
+    onWeiter();
+  };
+  return (
+    <Bildschirm>
+      <Titel>Wann ist es am schwersten?</Titel>
+      <Txt groesse={15} farbe={farben.textLeise} style={{ marginTop: -6 }}>
+        Dann melde ich mich kurz. Die Nachricht verrät nichts.
+      </Txt>
+      <View style={{ flex: 1, justifyContent: 'center' }}>
+        <Zeitrad uhr={uhr} onWechsel={setUhr} klick={() => vibriere('tick')} stil={{ farbe: farben.text, schrift: schrift.extra, groesse: 34, band: farben.akzentZart, bandRand: farben.akzent }} />
+      </View>
+      <Karte stil={{ padding: 14, gap: 2 }}>
+        <Txt groesse={15} gewicht="extra">
+          Kurzer Moment für dich
+        </Txt>
+        <Txt groesse={14} farbe={farben.textLeise}>
+          Wie geht es dir gerade?
+        </Txt>
+      </Karte>
+      <Knopf text="Erinnerung einschalten" onPress={() => weiter(true)} />
+      <Knopf text="Lieber ohne" art="leise" onPress={() => weiter(false)} />
+    </Bildschirm>
+  );
+}
+
+// Harte Paywall (nur Optik bis RevenueCat): baut sich Stück für Stück auf, persönlicher Titel aus dem Quiz,
+// kleine Feature-Karten, Zeitleiste Heute/Tag 5/Tag 7, Jahr und Monat nebeneinander, Figur guckt hinter der Jahreskarte vor.
+function Paywall({ onFertig }: { onFertig: () => void }) {
+  const { z, vibriere } = useApp();
+  const [plan, setPlan] = useState<'jahr' | 'monat'>('jahr');
+  const [hinweis, setHinweis] = useState(false);
+  const titel = z.phase === 'getrennt' ? `Dein Weg raus.\nIn ${z.ziel} Tagen.` : `Wieder klar sehen.\nIn ${z.ziel} Tagen.`;
+  const zeit = [
+    { fett: 'Heute', text: 'Alles frei. Dein Weg startet.' },
+    { fett: `Tag ${ERINNERUNG_TAG}`, text: 'Wir erinnern dich.' },
+    { fett: `Tag ${GRATIS_TAGE}`, text: 'Abo startet, jederzeit kündbar.' },
+  ];
+  return (
+    <Bildschirm stil={{ gap: 12 }}>
+      <Einblenden>
+        <Txt groesse={32} gewicht="serifFett" mitte>
+          {titel}
+        </Txt>
+      </Einblenden>
+      <Einblenden verz={150} stil={s.chipsMitte}>
+        {['SOS', 'Kontaktpause', 'Flaggen', 'Muster'].map((t) => (
+          <View key={t} style={s.mini}>
+            <Txt groesse={13} gewicht="extra">
+              {t}
             </Txt>
           </View>
-        ) : null}
-        <View style={[s.radio, an && { borderColor: farben.akzent }]}>{an ? <View style={s.radioPunkt} /> : null}</View>
+        ))}
+      </Einblenden>
+      <Einblenden verz={300} stil={{ alignSelf: 'center', width: '82%', gap: 12, marginTop: 6 }}>
+        {zeit.map((p, k) => (
+          <View key={p.fett} style={{ flexDirection: 'row', gap: 12 }}>
+            <View style={[s.zeitPunkt, k === 0 && { backgroundColor: farben.akzent, boxShadow: schatten.leuchten }]} />
+            <View>
+              <Txt groesse={16} gewicht="extra">
+                {p.fett}
+              </Txt>
+              <Txt groesse={14} farbe={farben.textLeise}>
+                {p.text}
+              </Txt>
+            </View>
+          </View>
+        ))}
+      </Einblenden>
+      <View style={{ flex: 1 }} />
+      <Einblenden verz={480} stil={{ flexDirection: 'row', gap: 12 }}>
+        <View style={{ flex: 1 }}>
+          <View style={{ position: 'absolute', right: 4, top: -62, zIndex: 0 }}>
+            <Figur pose={'winken' as Pose} groesse={58} />
+          </View>
+          <PlanKarte an={plan === 'jahr'} marke={`${GRATIS_TAGE} Tage gratis`} titel="Jahr" preis={PREIS_JAHR} unter="3,33 € im Monat" onPress={() => setPlan('jahr')} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <PlanKarte an={plan === 'monat'} titel="Monat" preis={PREIS_MONAT} unter="monatlich kündbar" onPress={() => setPlan('monat')} />
+        </View>
+      </Einblenden>
+      {hinweis ? (
+        <Txt groesse={13} farbe={farben.akzent} mitte>
+          Echte Käufe kommen später. Zum Testen: Weiter (Test).
+        </Txt>
+      ) : null}
+      <Einblenden verz={600}>
+        <Knopf text={plan === 'jahr' ? 'Kostenlos starten' : 'Monatlich starten'} onPress={() => setHinweis(true)} />
+      </Einblenden>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Txt groesse={12} farbe={farben.textHell}>
+          Wiederherstellen · Bedingungen
+        </Txt>
+        <Pressable
+          onPress={() => {
+            vibriere('mittel');
+            onFertig();
+          }}
+          hitSlop={12}
+          accessibilityRole="button"
+        >
+          <Txt groesse={14} gewicht="extra" farbe={farben.akzent}>
+            Weiter (Test)
+          </Txt>
+        </Pressable>
+      </View>
+    </Bildschirm>
+  );
+}
+
+function PlanKarte({ an, titel, preis, unter, marke, onPress }: { an: boolean; titel: string; preis: string; unter: string; marke?: string; onPress: () => void }) {
+  const feder = useFeder();
+  return (
+    <Animated.View style={feder.stil}>
+      <Pressable
+        onPressIn={feder.rein}
+        onPressOut={feder.raus}
+        onPress={() => {
+          feder.vibriere('mittel');
+          onPress();
+        }}
+        accessibilityRole="radio"
+        accessibilityState={{ selected: an }}
+        style={[s.plan, an && s.planAn]}
+      >
+        <Txt groesse={12} gewicht="extra" farbe={farben.akzent} mitte>
+          {marke ?? ' '}
+        </Txt>
+        <Txt groesse={16} gewicht="fett" mitte>
+          {titel}
+        </Txt>
+        <Txt groesse={24} gewicht="extra" mitte>
+          {preis}
+        </Txt>
+        <Txt groesse={12} farbe={farben.textHell} mitte>
+          {unter}
+        </Txt>
       </Pressable>
     </Animated.View>
   );
 }
 
 const s = StyleSheet.create({
-  flaggeKreis: { width: 132, height: 132, borderRadius: 66, backgroundColor: 'rgba(255,255,255,0.8)', alignItems: 'center', justifyContent: 'center', boxShadow: '0px 12px 30px rgba(184,70,60,0.15)' },
-  antwort: { borderRadius: 999, paddingVertical: 16, alignItems: 'center' },
-  nummer: { width: 32, height: 32, borderRadius: 16, backgroundColor: farben.akzent, alignItems: 'center', justifyContent: 'center' },
-  vorteil: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 9, paddingHorizontal: 14, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.85)' },
-  hakenKlein: { width: 22, height: 22, borderRadius: 11, backgroundColor: farben.akzent, alignItems: 'center', justifyContent: 'center' },
-  zeitleiste: { gap: 8, paddingVertical: 14, paddingHorizontal: 16, borderRadius: 18 },
-  plan: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 16, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.7)', borderWidth: 2, borderColor: 'transparent' },
-  planAn: { backgroundColor: farben.weiss, borderColor: farben.akzent, boxShadow: '0px 10px 24px rgba(184,70,60,0.15)' },
-  marke: { paddingHorizontal: 10, paddingVertical: 3, borderRadius: 999, backgroundColor: farben.akzent },
-  radio: { width: 22, height: 22, borderRadius: 11, borderWidth: 2, borderColor: farben.textHell, alignItems: 'center', justifyContent: 'center' },
-  radioPunkt: { width: 11, height: 11, borderRadius: 6, backgroundColor: farben.akzent },
+  feld: { fontFamily: schrift.halbfett, fontSize: 17, lineHeight: 25, color: farben.text, paddingVertical: 12, outlineStyle: 'none' } as object,
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  chipsMitte: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'center' },
+  bento: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: 12, marginTop: 8 },
+  karte: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 16, paddingHorizontal: 16, borderRadius: 22, backgroundColor: farben.karte, borderWidth: 1.5, borderColor: farben.karteRand },
+  karteAn: { borderColor: farben.akzent, boxShadow: schatten.leuchten },
+  icon: { width: 46, height: 46, borderRadius: 23, backgroundColor: farben.feld, alignItems: 'center', justifyContent: 'center' },
+  haken: { width: 26, height: 26, borderRadius: 13, borderWidth: 2, borderColor: farben.karteRand, alignItems: 'center', justifyContent: 'center' },
+  punkt: { width: 16, height: 16, borderRadius: 8, backgroundColor: farben.karteRand, marginTop: 4 },
+  schloss: { width: 96, height: 96, borderRadius: 48, backgroundColor: farben.akzent, alignItems: 'center', justifyContent: 'center', boxShadow: schatten.knopf },
+  mini: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 999, backgroundColor: farben.karte, borderWidth: 1, borderColor: farben.karteRand },
+  zeitPunkt: { width: 14, height: 14, borderRadius: 7, backgroundColor: farben.textHell, marginTop: 4 },
+  plan: { borderRadius: 20, paddingVertical: 16, paddingHorizontal: 8, gap: 2, backgroundColor: farben.karte, borderWidth: 2, borderColor: farben.karteRand },
+  planAn: { borderColor: farben.akzent, boxShadow: schatten.leuchten },
 });

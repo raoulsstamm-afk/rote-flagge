@@ -1,11 +1,13 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { Animated, Pressable, StyleSheet, View } from 'react-native';
-import { Flagge, Mikro, Stift } from '@/components/Symbole';
+import { KleineFlagge } from '@/components/Figur';
+import { Mikro, Stift } from '@/components/Symbole';
 import { Txt } from '@/components/Txt';
 import { Bildschirm, Einblenden, Knopf, NurAufDemHandy, useFeder } from '@/components/ui';
 import { kategorieName, kategorieKurz } from '@/data/kategorien';
 import { datumText, erkannteMuster } from '@/data/muster';
+import { formen } from '@/data/person';
 import { useApp } from '@/state/store';
 import { farben, LEISTE_PLATZ, schatten, verlaeufe } from '@/theme';
 
@@ -15,13 +17,15 @@ export default function Tagebuch() {
   const muster = erkannteMuster(z.eintraege)[0];
   const feder = useFeder();
   const leer = z.eintraege.length === 0;
+  const f = formen(z.person);
+  const wartend = z.geparkt.length;
 
   return (
     <Bildschirm verlauf={verlaeufe.tagebuch} scroll unten={LEISTE_PLATZ}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-        <Flagge />
-        <Txt groesse={26} gewicht="serifFett" style={{ flex: 1 }}>
-          Mein Tagebuch
+        <KleineFlagge groesse={22} />
+        <Txt groesse={28} gewicht="serifFett" style={{ flex: 1 }}>
+          Tagebuch
         </Txt>
         {!leer ? (
           <Txt groesse={14} gewicht="fett" farbe={farben.textLeise}>
@@ -42,14 +46,14 @@ export default function Tagebuch() {
             accessibilityRole="button"
             accessibilityLabel="Was ist passiert? Erzähl's mir."
           >
-            <LinearGradient colors={verlaeufe.grossKnopf} locations={[0, 0.7, 1]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[s.gross, { boxShadow: '0px 14px 30px rgba(184,70,60,0.3)' }]}>
+            <LinearGradient colors={verlaeufe.grossKnopf} locations={[0, 0.7, 1]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[s.gross, { boxShadow: schatten.knopf }]}>
               <View style={s.mikroKreis}>
-                <Mikro groesse={40} />
+                <Mikro groesse={40} farbe={farben.dunkel} />
               </View>
-              <Txt groesse={21} gewicht="serif" farbe={farben.weiss} mitte>
+              <Txt groesse={22} gewicht="serifFett" farbe={farben.dunkel} mitte>
                 Was ist passiert? Erzähl's mir.
               </Txt>
-              <Txt groesse={13} gewicht="fett" farbe="rgba(255,255,255,0.85)" mitte>
+              <Txt groesse={13} gewicht="extra" farbe={farben.dunkel} mitte>
                 Antippen und einfach losreden
               </Txt>
             </LinearGradient>
@@ -91,10 +95,13 @@ export default function Tagebuch() {
         <View style={{ gap: 10 }}>
           {z.eintraege.map((e, i) => (
             <Einblenden key={e.id} verz={Math.min(i, 6) * 70}>
-              <Pressable onPress={() => router.push({ pathname: '/ansehen', params: { id: e.id } })} style={[s.eintrag, { boxShadow: schatten.leise }]} accessibilityRole="button">
-                <Txt groesse={13} farbe={farben.textLeise}>
-                  {datumText(e.zeit)}
-                </Txt>
+              <Pressable onPress={() => router.push({ pathname: '/ansehen', params: { id: e.id } })} style={s.eintrag} accessibilityRole="button">
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  {e.waerme ? <View style={{ width: 9, height: 9, borderRadius: 5, backgroundColor: e.waerme === 'warm' ? farben.warm : e.waerme === 'kalt' ? farben.kalt : farben.textLeise }} /> : null}
+                  <Txt groesse={13} farbe={farben.textHell}>
+                    {datumText(e.zeit)}
+                  </Txt>
+                </View>
                 <Txt groesse={15} gewicht="fett" numberOfLines={2}>
                   {e.text || 'Ohne Text'}
                 </Txt>
@@ -109,7 +116,10 @@ export default function Tagebuch() {
         </View>
       )}
 
-      <Knopf text="SOS: Ich will ihm schreiben" art="glas" klein onPress={() => router.navigate('/sos')} />
+      {wartend ? (
+        <Knopf text={`Geparkte Nachrichten (${wartend})`} art="glas" klein onPress={() => router.push('/geparkt')} />
+      ) : null}
+      <Knopf text={`SOS: Ich will ${f.ihm} schreiben`} art="glas" klein onPress={() => router.push('/sos')} />
       <NurAufDemHandy />
     </Bildschirm>
   );
@@ -117,8 +127,8 @@ export default function Tagebuch() {
 
 const s = StyleSheet.create({
   gross: { alignItems: 'center', gap: 10, paddingVertical: 28, paddingHorizontal: 22, borderRadius: 28 },
-  mikroKreis: { width: 76, height: 76, borderRadius: 38, backgroundColor: 'rgba(255,255,255,0.18)', alignItems: 'center', justifyContent: 'center' },
+  mikroKreis: { width: 76, height: 76, borderRadius: 38, backgroundColor: 'rgba(26,11,11,0.12)', alignItems: 'center', justifyContent: 'center' },
   tippen: { flexDirection: 'row', alignSelf: 'center', alignItems: 'center', gap: 6, marginTop: -4 },
   muster: { padding: 16, borderRadius: 20, gap: 4 },
-  eintrag: { paddingVertical: 14, paddingHorizontal: 16, borderRadius: 18, backgroundColor: farben.glas, gap: 2 },
+  eintrag: { paddingVertical: 14, paddingHorizontal: 16, borderRadius: 18, backgroundColor: farben.karte, borderWidth: 1, borderColor: farben.karteRand, gap: 2 },
 });

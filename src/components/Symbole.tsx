@@ -1,3 +1,4 @@
+import type { ReactElement } from 'react';
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
 import { farben } from '@/theme';
 
@@ -114,6 +115,54 @@ export function Telefon({ groesse = 18, farbe = farben.akzent }: P) {
         fill="none"
         strokeLinejoin="round"
       />
+    </Svg>
+  );
+}
+
+export function Haus({ groesse = 26, farbe = farben.text }: P) {
+  return (
+    <Svg width={groesse} height={groesse} viewBox="0 0 24 24">
+      <Path d="M4 11l8-6.5 8 6.5V19a1.5 1.5 0 0 1-1.5 1.5h-3.5v-5.5h-6v5.5H5.5A1.5 1.5 0 0 1 4 19z" stroke={farbe} strokeWidth={2} fill="none" strokeLinejoin="round" />
+    </Svg>
+  );
+}
+
+export function Kurve({ groesse = 26, farbe = farben.text }: P) {
+  return (
+    <Svg width={groesse} height={groesse} viewBox="0 0 24 24">
+      <Path d="M3 14c2.5-7 4.5-7 6 0s3.5 7 6 0 3.5-6 6-2" stroke={farbe} strokeWidth={2.2} fill="none" strokeLinecap="round" />
+    </Svg>
+  );
+}
+
+export function Person({ groesse = 26, farbe = farben.text }: P) {
+  return (
+    <Svg width={groesse} height={groesse} viewBox="0 0 24 24">
+      <Circle cx="12" cy="8" r="4" stroke={farbe} strokeWidth={2} fill="none" />
+      <Path d="M4.5 20c1.2-4 4-6 7.5-6s6.3 2 7.5 6" stroke={farbe} strokeWidth={2} fill="none" strokeLinecap="round" />
+    </Svg>
+  );
+}
+
+// Symbole für Antwortkarten im Onboarding (eigene Linien-Icons, keine Emojis)
+export function KartenIcon({ name, groesse = 34, farbe = farben.akzent }: P & { name: string }) {
+  const st = { stroke: farbe, strokeWidth: 2, fill: 'none', strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const };
+  const pfade: Record<string, ReactElement> = {
+    funken: <Path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5L18 18M18 6l-2.5 2.5M8.5 15.5L6 18" {...st} />,
+    knoten: <Path d="M4 12c0-4 4-6 8-2s8 2 8-2M4 12c0 4 4 6 8 2s8-2 8 2" {...st} />,
+    herz: <Path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z" {...st} />,
+    bruch: <Path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6M12 20s7-4.4 7-10a4 4 0 0 0-7-2.6l-1.5 4 3 2-1.5 3" {...st} />,
+    sonne: <><Circle cx="12" cy="12" r="4" {...st} /><Path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M18.4 5.6L17 7M7 17l-1.4 1.4" {...st} /></>,
+    welle: <Path d="M3 12c2-4 4-4 6 0s4 4 6 0 4-4 6 0" {...st} />,
+    klein: <><Circle cx="12" cy="14" r="2.5" {...st} /><Path d="M5 5l3 3M19 5l-3 3M5 19l3-3M19 19l-3-3" {...st} /></>,
+    mann: <><Circle cx="12" cy="7" r="3.5" {...st} /><Path d="M6 21v-3a6 6 0 0 1 12 0v3" {...st} /></>,
+    frau: <><Circle cx="12" cy="7" r="3.5" {...st} /><Path d="M7 21l2-7h6l2 7M9 14l-1 3h8l-1-3" {...st} /></>,
+    offen: <><Circle cx="12" cy="12" r="8" {...st} /><Path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .8-1 1.5M12 16.5v.5" {...st} /></>,
+    ziel: <><Circle cx="12" cy="12" r="8" {...st} /><Circle cx="12" cy="12" r="4" {...st} /><Circle cx="12" cy="12" r="0.8" fill={farbe} /></>,
+  };
+  return (
+    <Svg width={groesse} height={groesse} viewBox="0 0 24 24">
+      {pfade[name] ?? pfade.ziel}
     </Svg>
   );
 }

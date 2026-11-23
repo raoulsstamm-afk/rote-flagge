@@ -2,9 +2,12 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
 import { createContext, ReactNode, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { Platform } from 'react-native';
-import type { KategorieId } from '@/data/kategorien';
+import type { KategorieId, Waerme } from '@/data/kategorien';
 import { kalenderTage } from '@/data/muster';
-import type { Antwort } from '@/data/quiz';
+import type { Person } from '@/data/person';
+import { Phase, zaehltKontaktpause } from '@/data/phasen';
+import type { QuizAntworten } from '@/data/quiz';
+import type { MusterBericht } from '@/ki/musterKI';
 
 // Speicher der App. Alles bleibt nur auf dem Handy (AsyncStorage). Keine Konten, kein Server, keine Statistik.
 // Tagebuch-Einträge sind hochsensibel (Beziehung, Gefühle) und verlassen das Gerät nie.
@@ -15,6 +18,8 @@ export type Eintrag = {
   text: string;
   gefuehle: string[];
   kategorien: KategorieId[];
+  // War die andere Person gerade warm oder kalt? (für die Heiß-kalt-Kurve, ältere Einträge haben nichts)
+  waerme?: Waerme | null;
 };
 
 export type Geparkt = {
@@ -28,7 +33,18 @@ export type Geparkt = {
 
 export type Zustand = {
   onboardingFertig: boolean;
-  quiz: Record<string, Antwort>;
+  quiz: QuizAntworten;
+  // Wo stehst du gerade? Und um wen geht's? (Redesign 23.11.2026)
+  phase: Phase | null;
+  person: Person | null;
+  ziel: number;
+  // Tage, an denen du bei dir geblieben bist (JJJJ-MM-TT), zählt außerhalb der Trennung
+  tageBeiDir: string[];
+  // SOS-Momente, die du überstanden hast
+  sosGeschafft: number;
+  // KI-Musterbericht nur mit ausdrücklicher Einwilligung (Art. 9 DSGVO, Daten Dritter)
+  kiEinwilligung: boolean;
+  kiBericht: { zeit: number; anzahl: number; bericht: MusterBericht } | null;
   // Uhrzeit der täglichen Erinnerung ("20:00") oder null
   erinnerung: string | null;
   appSperre: boolean;
@@ -41,6 +57,13 @@ export type Zustand = {
 const leererZustand: Zustand = {
   onboardingFertig: false,
   quiz: {},
+  phase: null,
+  person: null,
+  ziel: 30,
+  tageBeiDir: [],
+  sosGeschafft: 0,
+  kiEinwilligung: false,
+  kiBericht: null,
   erinnerung: null,
   appSperre: false,
   eintraege: [],
@@ -49,7 +72,9 @@ const leererZustand: Zustand = {
   kontaktpause: { start: null, laengste: 0 },
 };
 
-const SCHLUESSEL = 'rote-flagge-v1';
+// v2 seit dem Redesign 23.11.2026 (neues Quiz, Phasen). Alte Stände starten das Onboarding neu, Einträge bleiben.
+const SCHLUESSEL = 'rote-flagge-v2';
+const ALT_SCHLUESSEL = 'rote-flagge-v1';
 export const PARK_DAUER_MS = 24 * 60 * 60 * 1000;
 
 const neueId = () => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
@@ -66,6 +91,8 @@ type Kontext = {
   parken: (text: string) => Geparkt;
   entscheiden: (id: string, wahl: 'loeschen' | 'behalten') => void;
   kontaktpauseStarten: () => void;
+  heuteBeiMir: () => void;
+  sosGeschafftZaehlen: () => void;
   kontaktGehabt: () => void;
   allesLoeschen: () => Promise<void>;
 };
@@ -79,9 +106,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   zRef.current = z;
 
   useEffect(() => {
-    AsyncStorage.getItem(SCHLUESSEL)
-      .then((roh) => {
+    Promise.all([AsyncStorage.getItem(SCHLUESSEL), AsyncStorage.getItem(ALT_SCHLUESSEL)])
+      .then(([roh, alt]) => {
         if (roh) setZ({ ...leererZustand, ...JSON.parse(roh) });
+        else if (alt) {
+          const a = JSON.parse(alt);
+          setZ({ ...leererZustand, eintraege: a.eintraege ?? [], geparkt: a.geparkt ?? [], geparktGesamt: a.geparktGesamt ?? 0, kontaktpause: a.kontaktpause ?? leererZustand.kontaktpause, appSperre: !!a.appSperre });
+        }
       })
       .catch(() => {})
       .finally(() => setGeladen(true));
@@ -103,7 +134,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const eintragSpeichern = useCallback((e: Omit<Eintrag, 'id' | 'zeit'>) => {
     const neu: Eintrag = { ...e, id: neueId(), zeit: Date.now() };
-    setZ((alt) => ({ ...alt, eintraege: [neu, ...alt.eintraege] }));
+    // Festhalten zählt auch als Tag bei dir
+    setZ((alt) => ({ ...alt, eintraege: [neu, ...alt.eintraege], tageBeiDir: mitHeute(alt.tageBeiDir) }));
     return neu;
   }, []);
 
@@ -137,16 +169,40 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [],
   );
 
+  const heuteBeiMir = useCallback(() => setZ((alt) => ({ ...alt, tageBeiDir: mitHeute(alt.tageBeiDir) })), []);
+  const sosGeschafftZaehlen = useCallback(() => setZ((alt) => ({ ...alt, sosGeschafft: alt.sosGeschafft + 1, tageBeiDir: mitHeute(alt.tageBeiDir) })), []);
+
   const allesLoeschen = useCallback(async () => {
     await AsyncStorage.removeItem(SCHLUESSEL).catch(() => {});
+    await AsyncStorage.removeItem(ALT_SCHLUESSEL).catch(() => {});
     setZ(leererZustand);
   }, []);
 
   return (
-    <Ctx.Provider value={{ z, geladen, setze, vibriere, eintragSpeichern, eintragLoeschen, parken, entscheiden, kontaktpauseStarten, kontaktGehabt, allesLoeschen }}>
+    <Ctx.Provider value={{ z, geladen, setze, vibriere, eintragSpeichern, eintragLoeschen, parken, entscheiden, kontaktpauseStarten, kontaktGehabt, heuteBeiMir, sosGeschafftZaehlen, allesLoeschen }}>
       {children}
     </Ctx.Provider>
   );
+}
+
+export const tagSchluessel = (zeit = Date.now()) => {
+  const d = new Date(zeit);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+const mitHeute = (tage: string[]) => (tage.includes(tagSchluessel()) ? tage : [...tage, tagSchluessel()]);
+
+// Die große Zahl auf "Heute": nach der Trennung Tage Kontaktpause, sonst Tage bei dir
+export function berechne(z: Zustand) {
+  const kontakt = zaehltKontaktpause(z.phase);
+  const pauseTage = z.kontaktpause.start ? kalenderTage(z.kontaktpause.start) : 0;
+  const zahl = kontakt ? pauseTage : z.tageBeiDir.length;
+  return {
+    kontakt,
+    zahl,
+    einheit: kontakt ? (zahl === 1 ? 'Tag Kontaktpause' : 'Tage Kontaktpause') : zahl === 1 ? 'Tag bei dir' : 'Tage bei dir',
+    heuteGezaehlt: kontakt ? !!z.kontaktpause.start : z.tageBeiDir.includes(tagSchluessel()),
+    laengste: Math.max(z.kontaktpause.laengste, pauseTage),
+  };
 }
 
 export function useApp() {

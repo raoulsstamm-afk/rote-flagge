@@ -89,7 +89,7 @@ export default function Ansehen() {
 }
 
 const s = StyleSheet.create({
-  zurueck: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.8)', alignItems: 'center', justifyContent: 'center' },
+  zurueck: { width: 40, height: 40, borderRadius: 20, backgroundColor: farben.karte, borderWidth: 1, borderColor: farben.karteRand, alignItems: 'center', justifyContent: 'center' },
   reihe: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   pille: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 999, backgroundColor: farben.glas },
 });

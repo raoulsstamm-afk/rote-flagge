@@ -1,5 +1,5 @@
 import { Text, TextProps, StyleSheet, TextStyle } from 'react-native';
-import { farben, schrift } from '@/theme';
+import { farben, schrift, titelSchatten } from '@/theme';
 
 type Props = TextProps & {
   groesse?: number;
@@ -26,6 +26,7 @@ export function Txt({ groesse = 16, gewicht = 'normal', farbe, mitte, style, chi
           includeFontPadding: false,
           textAlign: mitte ? 'center' : undefined,
         },
+        serif && size >= 22 && !farbe ? titelSchatten : null,
         style,
       ]}
     >

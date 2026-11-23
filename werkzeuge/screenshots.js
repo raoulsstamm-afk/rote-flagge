@@ -14,28 +14,36 @@ const TYPEN = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/cs
 
 const TAG = 24 * 60 * 60 * 1000;
 // Beispieldaten für die Fotos der vollen App (nur im Test-Browser)
-function beispiel() {
+function beispiel(phase = 'kompliziert') {
   const jetzt = Date.now();
-  const e = (tage, std, text, kategorien, gefuehle) => ({ id: `e${tage}${std}`, zeit: jetzt - tage * TAG - std * 3600000, text, kategorien, gefuehle });
+  const e = (tage, std, text, kategorien, gefuehle, waerme) => ({ id: `e${tage}${std}`, zeit: jetzt - tage * TAG - std * 3600000, text, kategorien, gefuehle, waerme });
+  const tage = Array.from({ length: 9 }, (_, i) => new Date(jetzt - i * TAG).toISOString().slice(0, 10)).slice(1);
   return {
     onboardingFertig: true,
-    quiz: { luft: 2, schuld: 2, 'nie-passiert': 1, spass: 2, 'wo-bist-du': 1, laut: 0, aendern: 2, eierschalen: 2, kleiner: 1, freunde: 0 },
-    erinnerung: '20:00',
+    phase,
+    person: { name: 'Jonas', pronomen: 'er' },
+    ziel: 30,
+    quiz: { danach: 'verwirrt', kennst: ['warmkalt', 'schuld', 'warten'], gedanken: 3, schwer: ['abends', 'still'], zurueck: ['ruhe', 'selbstwert'] },
+    erinnerung: '21:30',
     appSperre: false,
+    tageBeiDir: tage,
+    sosGeschafft: 3,
+    kiEinwilligung: false,
+    kiBericht: null,
     eintraege: [
-      e(0, 2, 'Hat meine Nachricht gelesen und zwei Tage nicht geantwortet. Als ich nachgefragt habe, meinte er, ich sei zu anstrengend.', ['ignoriert', 'schuld'], ['Klein', 'Verwirrt']),
-      e(3, 5, 'Vor seinen Freunden hat er sich über meinen Job lustig gemacht. Später hieß es, das war doch nur Spaß.', ['laecherlich'], ['Klein', 'Traurig']),
-      e(6, 1, 'Nach dem Streit am Sonntag wieder kein Wort, bis ich mich entschuldigt habe.', ['ignoriert'], ['Schuldig', 'Leer']),
-      e(11, 3, 'Er hat gesagt, er hätte nie versprochen, zum Geburtstag meiner Mama mitzukommen.', ['angezweifelt', 'versprechen'], ['Verwirrt']),
-      e(17, 4, 'Wollte wissen, mit wem ich schreibe, und hat nach meinem Handy gegriffen.', ['kontrolliert'], ['Ängstlich']),
-      e(20, 2, 'Den ganzen Abend ignoriert, weil ich mit einer Freundin telefoniert habe.', ['ignoriert', 'kontrolliert'], ['Klein', 'Wütend']),
+      e(0, 2, 'Hat meine Nachricht gelesen und zwei Tage nicht geantwortet. Als ich nachgefragt habe, hieß es, ich sei zu anstrengend.', ['ignoriert', 'schuld'], ['Klein', 'Verwirrt'], 'kalt'),
+      e(2, 5, 'Plötzlich wieder total süß, langer Anruf, will mich am Wochenende sehen.', ['warmkalt'], ['Hoffnungsvoll'], 'warm'),
+      e(4, 1, 'Treffen abgesagt, eine Stunde vorher. Danach kein Wort.', ['versprechen', 'warmkalt'], ['Leer'], 'kalt'),
+      e(7, 3, 'Sprachnachricht mitten in der Nacht: er vermisst mich.', ['warmkalt'], ['Verwirrt', 'Hoffnungsvoll'], 'warm'),
+      e(10, 4, 'Ich habe angesprochen, dass mich das verletzt. Am Ende habe ich mich entschuldigt.', ['schuld'], ['Schuldig'], 'kalt'),
+      e(14, 2, 'Er sagt, er hätte nie versprochen, zum Geburtstag meiner Mama mitzukommen.', ['angezweifelt', 'versprechen'], ['Verwirrt'], 'beides'),
+      e(18, 2, 'Wochenende zusammen, alles wie am Anfang.', ['warmkalt'], ['Ruhig'], 'warm'),
     ],
     geparkt: [
-      { id: 'g1', text: 'Ich vermisse dich. Können wir nicht einfach reden? Ich weiß, ich war auch schuld.', zeit: jetzt - 26 * 3600000, bis: jetzt - 2 * 3600000, status: 'wartet' },
-      { id: 'g2', text: 'Warum antwortest du nicht? Du weißt genau, wie mich das fertig macht.', zeit: jetzt - 3 * 3600000, bis: jetzt + 21 * 3600000, status: 'wartet' },
+      { id: 'g1', text: 'Ich vermisse dich. Können wir nicht einfach reden?', zeit: jetzt - 26 * 3600000, bis: jetzt - 2 * 3600000, status: 'wartet' },
     ],
-    geparktGesamt: 6,
-    kontaktpause: { start: jetzt - 8 * TAG, laengste: 4 },
+    geparktGesamt: 4,
+    kontaktpause: phase === 'getrennt' ? { start: jetzt - 12 * TAG, laengste: 4 } : { start: null, laengste: 0 },
   };
 }
 
@@ -79,87 +87,120 @@ function beispiel() {
 
   // Onboarding
   await seite.goto(basis);
-  await warte(2500);
-  await foto('onboarding_start');
+  await warte(3500);
+  await foto('intro_1');
+  await knopf('Kenn ich');
+  await foto('intro_2');
   await knopf("Los geht's");
-  await foto('quiz_frage1');
-  const antworten = ['Ja, oft', 'Ja, oft', 'Manchmal', 'Ja, oft', 'Manchmal', 'Nein', 'Ja, oft', 'Ja, oft', 'Manchmal', 'Nein'];
-  for (let i = 0; i < antworten.length; i++) {
-    await knopf(antworten[i]);
-    if (i === 4) await foto('quiz_frage6');
-  }
-  await foto('quiz_ergebnis');
-  await knopf('Zu meinem Plan');
-  await foto('plan');
-  await knopf('Klingt gut');
-  await foto('erinnerung');
-  await knopf('Erinnerung einschalten');
-  await foto('paywall');
-  await knopf('7 Tage gratis starten');
-  await foto('paywall_kaufhinweis');
-  await knopf('Weiter (Test)');
-  await foto('tagebuch_leer');
-
-  // Erster Eintrag (Tippen, weil Sprechen im Web fehlt)
-  await knopf("Was ist passiert? Erzähl's mir.");
-  await foto('eintrag_1_was_ist_passiert');
-  await seite.locator('textarea').first().fill('Er hat meine Nachricht gelesen und zwei Tage nicht geantwortet.');
-  await warte(200);
-  await foto('eintrag_1_mit_text');
+  await knopf('Es ist kompliziert');
+  await foto('phase');
   await knopf('Weiter');
-  await knopf('Klein');
+  await knopf('Ein Mann');
+  await seite.locator('input').first().fill('Jonas');
+  await foto('person');
+  await knopf('Weiter');
   await knopf('Verwirrt');
-  await foto('eintrag_2_gefuehl');
+  await foto('frage_danach');
   await knopf('Weiter');
-  await knopf('Ignoriert');
-  await foto('eintrag_3_kategorie');
-  await knopf('Festhalten');
-  await foto('eintrag_4_festgehalten');
-  await knopf('Fertig');
-  await foto('tagebuch_ein_eintrag');
-
-  // Volle App mit Beispieldaten
-  await seite.evaluate((d) => localStorage.setItem('rote-flagge-v1', JSON.stringify(d)), beispiel());
-  await seite.goto(`${basis}/tagebuch`);
-  await warte(2000);
-  await foto('tagebuch_mit_eintraegen');
-  await seite.getByText('Vor seinen Freunden', { exact: false }).first().click();
-  await foto('eintrag_ansehen');
-  await seite.getByLabel('Zurück', { exact: true }).first().click();
+  await knopf('Erst ganz nah, dann tagelang still');
+  await knopf('Am Ende bin ich schuld');
+  await knopf('Ich warte ständig auf eine Nachricht');
+  await foto('frage_kennst');
+  await knopf('Weiter');
+  await foto('frage_gedanken');
+  await knopf('Weiter');
+  await knopf('Abends im Bett');
+  await knopf('Wenn er nicht antwortet');
+  await foto('frage_schwer');
+  await knopf('Weiter');
+  await knopf('Ruhe im Kopf');
+  await foto('frage_zurueck');
+  await knopf('Weiter');
+  await foto('ziel');
+  await knopf('Weiter');
+  await warte(2600);
+  await foto('auswertung');
+  await knopf('Mein Ergebnis');
+  await warte(400);
+  await foto('ergebnis');
+  await knopf('Weiter');
+  await seite.locator('textarea').first().fill('Ich vermiss dich. Können wir reden?');
+  await foto('ausprobieren');
+  await knopf('24 Stunden parken');
+  await foto('ausprobieren_geparkt');
+  await knopf('Weiter');
+  await seite.locator('textarea').first().fill('Drei Tage keine Antwort, dann so getan, als wäre nichts.');
+  await knopf('Flagge setzen');
+  await foto('erste_flagge');
+  await knopf('Weiter');
+  await warte(600);
+  await foto('plan');
+  await knopf('Weiter');
+  await foto('erinnerung');
+  await knopf('Lieber ohne');
   await warte(500);
+  await foto('paywall');
+  await knopf('Weiter (Test)');
+  await warte(800);
+  await foto('heute_erster_tag');
+
+  // Volle App mit Beispieldaten (Phase "kompliziert")
+  await seite.evaluate((d) => localStorage.setItem('rote-flagge-v2', JSON.stringify(d)), beispiel());
+  await seite.goto(`${basis}/heute`);
+  await warte(2500);
+  await foto('heute');
+  await seite.mouse.move(195, 400);
+  await seite.mouse.wheel(0, 600);
+  await foto('heute_unten');
   await seite.getByLabel('Muster', { exact: true }).first().click();
   await foto('muster');
   await seite.mouse.move(195, 400);
   await seite.mouse.wheel(0, 700);
-  await foto('muster_unten');
-  await seite.getByLabel('SOS', { exact: true }).first().click();
-  await foto('sos');
-  await seite.locator('textarea').first().fill('Ich will dir nur sagen, dass ...');
-  await warte(200);
-  await knopf('24 Stunden parken');
-  await foto('sos_geparkt');
-  await knopf('Ich hatte Kontakt');
-  await foto('sos_kontakt_rueckfrage');
-  await knopf('Abbrechen');
-  await seite.getByText('bereit zum Entscheiden', { exact: false }).first().click();
-  await warte(600);
-  await foto('geparkte_nachrichten');
-  await seite.getByLabel('Zurück', { exact: true }).first().click();
-  await warte(500);
-  await seite.getByLabel('Einstellungen', { exact: true }).first().click();
-  await foto('einstellungen');
-  await seite.mouse.move(195, 400);
+  await foto('muster_mitte');
   await seite.mouse.wheel(0, 900);
-  await foto('einstellungen_unten');
+  await foto('muster_unten');
+  await seite.getByLabel('Tagebuch', { exact: true }).first().click();
+  await foto('tagebuch');
+  await knopf('Lieber tippen');
+  await seite.locator('textarea').first().fill('Wieder zwei Tage nichts, dann ein Herz unter meiner Story.');
+  await knopf('Weiter');
+  await knopf('Beides auf einmal');
+  await foto('eintrag_waerme');
+  await knopf('Weiter');
+  await knopf('Verwirrt');
+  await knopf('Weiter');
+  await knopf('Erst nah, dann weg');
+  await knopf('Festhalten');
+  await foto('eintrag_fertig');
+  await knopf('Fertig');
+  await seite.getByLabel('SOS: Ich will schreiben', { exact: true }).first().click();
+  await warte(600);
+  await seite.locator('textarea').first().fill('Hey, ich muss die ganze Zeit an dich denken.');
+  await foto('sos_schreiben');
+  await knopf('Weiter');
+  await warte(3000);
+  await foto('sos_flaggen');
+  await knopf('24 Stunden parken');
+  await warte(1500);
+  await foto('sos_atmen');
+  await knopf('Überspringen');
+  await foto('sos_fertig');
+  await knopf('Fertig');
+  await warte(600);
 
-  // Muster leer (frischer Zustand nach dem Onboarding)
-  await seite.evaluate(() => localStorage.setItem('rote-flagge-v1', JSON.stringify({ onboardingFertig: true })));
+  // Nach der Trennung: große Zahl = Kontaktpause
+  await seite.evaluate((d) => localStorage.setItem('rote-flagge-v2', JSON.stringify(d)), beispiel('getrennt'));
+  await seite.goto(`${basis}/heute`);
+  await warte(2500);
+  await foto('heute_getrennt');
+  await seite.getByLabel('Profil', { exact: true }).first().click();
+  await foto('einstellungen');
+
+  // Leer nach dem Onboarding
+  await seite.evaluate(() => localStorage.setItem('rote-flagge-v2', JSON.stringify({ onboardingFertig: true, phase: 'kennenlernen', person: { name: '', pronomen: 'sie' } })));
   await seite.goto(`${basis}/muster`);
   await warte(2000);
   await foto('muster_leer');
-  await seite.goto(`${basis}/sos`);
-  await warte(2000);
-  await foto('sos_ohne_kontaktpause');
 
   await browser.close();
   server.close();

@@ -1,96 +1,96 @@
+import { LinearGradient } from 'expo-linear-gradient';
 import { router, Tabs, usePathname } from 'expo-router';
 import { useEffect, useRef } from 'react';
-import { Animated, Platform, Pressable, View } from 'react-native';
+import { Animated, Easing, Platform, Pressable, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Buch, Saeulen, Sprechblase, Zahnrad } from '@/components/Symbole';
+import { Buch, Haus, Kurve, Person } from '@/components/Symbole';
 import { Txt } from '@/components/Txt';
 import { useApp } from '@/state/store';
-import { farben } from '@/theme';
+import { farben, schatten, verlaeufe } from '@/theme';
 
-// Schwebende Leiste unten: Tagebuch, Muster, SOS, daneben das Zahnrad für die Einstellungen.
+// Schwebende Leiste unten wie bei Drangduell: Heute, Tagebuch, SOS (großer Knopf in der Mitte), Muster, Profil.
 const nativ = Platform.OS !== 'web';
 
-const REITER: Record<string, { titel: string; Symbol: typeof Buch }> = {
+const REITER = {
+  heute: { titel: 'Heute', Symbol: Haus },
   tagebuch: { titel: 'Tagebuch', Symbol: Buch },
-  muster: { titel: 'Muster', Symbol: Saeulen },
-  sos: { titel: 'SOS', Symbol: Sprechblase },
-};
+  muster: { titel: 'Muster', Symbol: Kurve },
+  profil: { titel: 'Profil', Symbol: Person },
+} as const;
+type Name = keyof typeof REITER;
 
-function Reiter({ name, aktiv, onPress }: { name: string; aktiv: boolean; onPress: () => void }) {
-  const anim = useRef(new Animated.Value(aktiv ? 1 : 0)).current;
-  useEffect(() => {
-    Animated.spring(anim, { toValue: aktiv ? 1 : 0, useNativeDriver: nativ, speed: 16, bounciness: 10 }).start();
-  }, [aktiv, anim]);
+function Reiter({ name, aktiv, onPress }: { name: Name; aktiv: boolean; onPress: () => void }) {
   const { titel, Symbol } = REITER[name];
   return (
-    <Pressable onPress={onPress} style={{ flex: 1, alignItems: 'center', gap: 2, paddingVertical: 6 }} accessibilityRole="tab" accessibilityState={{ selected: aktiv }} accessibilityLabel={titel}>
-      <View style={{ width: 52, height: 34, alignItems: 'center', justifyContent: 'center' }}>
-        <Animated.View
-          style={{
-            position: 'absolute',
-            width: 52,
-            height: 34,
-            borderRadius: 17,
-            backgroundColor: farben.akzentZart,
-            opacity: anim,
-            transform: [{ scale: anim.interpolate({ inputRange: [0, 1], outputRange: [0.6, 1] }) }],
-          }}
-        />
-        <View style={{ zIndex: 1 }}>
-          <Symbol groesse={24} farbe={aktiv ? farben.akzent : farben.textLeise} />
-        </View>
-      </View>
-      <Txt groesse={12} gewicht={aktiv ? 'extra' : 'fett'} farbe={aktiv ? farben.akzent : farben.textLeise}>
+    <Pressable onPress={onPress} style={{ flex: 1, alignItems: 'center', gap: 2, paddingVertical: 8 }} accessibilityRole="tab" accessibilityState={{ selected: aktiv }} accessibilityLabel={titel}>
+      <Symbol groesse={24} farbe={aktiv ? farben.akzent : farben.textHell} />
+      <Txt groesse={11} gewicht={aktiv ? 'extra' : 'fett'} farbe={aktiv ? farben.akzent : farben.textHell}>
         {titel}
       </Txt>
     </Pressable>
   );
 }
 
-const NAMEN = ['tagebuch', 'muster', 'sos'] as const;
+// Der SOS-Knopf atmet leicht und leuchtet
+function SosKnopf({ onPress }: { onPress: () => void }) {
+  const a = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    const l = Animated.loop(
+      Animated.sequence([
+        Animated.timing(a, { toValue: 1, duration: 1400, easing: Easing.inOut(Easing.sin), useNativeDriver: nativ }),
+        Animated.timing(a, { toValue: 0, duration: 1400, easing: Easing.inOut(Easing.sin), useNativeDriver: nativ }),
+      ]),
+    );
+    l.start();
+    return () => l.stop();
+  }, [a]);
+  return (
+    <Pressable onPress={onPress} hitSlop={10} accessibilityRole="button" accessibilityLabel="SOS: Ich will schreiben" style={{ width: 74, alignItems: 'center' }}>
+      <Animated.View style={{ transform: [{ scale: a.interpolate({ inputRange: [0, 1], outputRange: [1, 1.06] }) }], marginTop: -26 }}>
+        <LinearGradient colors={verlaeufe.knopf} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ width: 64, height: 64, borderRadius: 32, alignItems: 'center', justifyContent: 'center', boxShadow: schatten.knopf, borderWidth: 3, borderColor: farben.nachtOben }}>
+          <Txt groesse={15} gewicht="extra" farbe={farben.dunkel}>
+            SOS
+          </Txt>
+        </LinearGradient>
+      </Animated.View>
+    </Pressable>
+  );
+}
 
-// Die Leiste liegt bewusst außerhalb der Tabs und nach ihnen, damit sie im Web und auf dem iPhone sicher über dem Inhalt liegt
 function Leiste() {
   const { vibriere } = useApp();
   const pfad = usePathname();
   const unten = Math.max(useSafeAreaInsets().bottom, 12);
+  const geh = (name: string) => {
+    vibriere('leicht');
+    if (name === 'profil') router.push('/einstellungen');
+    else if (pfad !== `/${name}`) router.navigate(`/${name}` as never);
+  };
   return (
-    <View style={{ position: 'absolute', left: 16, right: 16, bottom: unten, flexDirection: 'row', alignItems: 'center', gap: 10, zIndex: 100, elevation: 12 }} pointerEvents="box-none">
-      <View style={{ flex: 1, flexDirection: 'row', backgroundColor: 'rgba(255,255,255,0.94)', borderRadius: 30, paddingHorizontal: 6, paddingVertical: 4, boxShadow: '0px 10px 28px rgba(74,61,53,0.14)' }}>
-        {NAMEN.map((name) => (
-          <Reiter
-            key={name}
-            name={name}
-            aktiv={pfad === `/${name}`}
-            onPress={() => {
-              vibriere('leicht');
-              if (pfad !== `/${name}`) router.navigate(`/${name}`);
-            }}
-          />
-        ))}
+    <View style={{ position: 'absolute', left: 14, right: 14, bottom: unten, zIndex: 100, elevation: 12 }} pointerEvents="box-none">
+      <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#120D17', borderRadius: 34, borderWidth: 1, borderColor: farben.karteRand, paddingHorizontal: 4, boxShadow: '0px 10px 28px rgba(0,0,0,0.5)' }}>
+        <Reiter name="heute" aktiv={pfad === '/heute'} onPress={() => geh('heute')} />
+        <Reiter name="tagebuch" aktiv={pfad === '/tagebuch'} onPress={() => geh('tagebuch')} />
+        <SosKnopf
+          onPress={() => {
+            vibriere('mittel');
+            router.push('/sos');
+          }}
+        />
+        <Reiter name="muster" aktiv={pfad === '/muster'} onPress={() => geh('muster')} />
+        <Reiter name="profil" aktiv={false} onPress={() => geh('profil')} />
       </View>
-      <Pressable
-        onPress={() => {
-          vibriere('leicht');
-          router.push('/einstellungen');
-        }}
-        style={{ width: 58, height: 58, borderRadius: 29, backgroundColor: 'rgba(255,255,255,0.94)', alignItems: 'center', justifyContent: 'center', boxShadow: '0px 10px 28px rgba(74,61,53,0.14)' }}
-        accessibilityRole="button"
-        accessibilityLabel="Einstellungen"
-      >
-        <Zahnrad groesse={26} farbe={farben.textLeise} />
-      </Pressable>
     </View>
   );
 }
 
 export default function TabsLayout() {
   return (
-    <View style={{ flex: 1 }}>
-      <Tabs tabBar={() => null} screenOptions={{ headerShown: false }}>
+    <View style={{ flex: 1, backgroundColor: farben.nachtOben }}>
+      <Tabs tabBar={() => null} screenOptions={{ headerShown: false, sceneStyle: { backgroundColor: farben.nachtOben } }}>
+        <Tabs.Screen name="heute" />
         <Tabs.Screen name="tagebuch" />
         <Tabs.Screen name="muster" />
-        <Tabs.Screen name="sos" />
       </Tabs>
       <Leiste />
     </View>

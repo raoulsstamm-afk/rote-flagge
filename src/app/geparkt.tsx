@@ -108,6 +108,6 @@ export default function GeparkteNachrichten() {
 }
 
 const s = StyleSheet.create({
-  zurueck: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.8)', alignItems: 'center', justifyContent: 'center' },
+  zurueck: { width: 40, height: 40, borderRadius: 20, backgroundColor: farben.karte, borderWidth: 1, borderColor: farben.karteRand, alignItems: 'center', justifyContent: 'center' },
   behalten: { padding: 14, borderRadius: 18, backgroundColor: farben.glas, gap: 4 },
 });

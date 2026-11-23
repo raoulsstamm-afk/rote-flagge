@@ -59,7 +59,7 @@ function Inhalt() {
   if (!bereit) return null;
   return (
     <Sperre>
-      <StatusBar style="dark" />
+      <StatusBar style="light" />
       <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: farben.creme } }}>
         <Stack.Screen name="index" />
         <Stack.Screen name="onboarding" options={{ gestureEnabled: false }} />
@@ -67,6 +67,7 @@ function Inhalt() {
         <Stack.Screen name="eintrag" options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }} />
         <Stack.Screen name="ansehen" />
         <Stack.Screen name="geparkt" />
+        <Stack.Screen name="sos" options={{ presentation: 'fullScreenModal', animation: 'fade' }} />
         <Stack.Screen name="einstellungen" />
       </Stack>
     </Sperre>

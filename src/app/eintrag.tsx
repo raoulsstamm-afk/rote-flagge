@@ -2,21 +2,23 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { Animated, KeyboardAvoidingView, Platform, Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { Sprechknopf } from '@/components/Sprechknopf';
-import { Haken, Kreuz } from '@/components/Symbole';
+import { Kreuz } from '@/components/Symbole';
 import { Txt } from '@/components/Txt';
 import { Bildschirm, Chip, Einblenden, HilfeKarte, Karte, Knopf, Marke, NurAufDemHandy } from '@/components/ui';
-import { gefuehle, KategorieId, kategorieKurz, kategorien } from '@/data/kategorien';
+import { gefuehle, KategorieId, kategorieKurz, kategorien, Waerme, WAERME_WAHL } from '@/data/kategorien';
+import { formen } from '@/data/person';
+import { KleineFlagge } from '@/components/Figur';
 import { datumText, erkannteMuster } from '@/data/muster';
 import { quizSchwerpunkte } from '@/data/quiz';
-import { ordneEin } from '@/ki/einordnenKI';
 import { spracheVerfuegbar, starteZuhoeren, stoppeZuhoeren } from '@/sprache';
 import { Eintrag, useApp } from '@/state/store';
 import { farben, schrift, verlaeufe } from '@/theme';
 
-// Geführter Eintrag: 1. Was ist passiert? (sprechen oder tippen) 2. Wie ging's dir danach? 3. Was davon trifft zu? 4. Festgehalten.
+// Geführter Eintrag: 1. Was ist passiert? (sprechen oder tippen) 2. Warm oder kalt? 3. Wie ging's dir danach?
+// 4. Was davon trifft zu? 5. Festgehalten (eine neue rote Flagge auf dem Hügel).
 // Ein Bildschirm, eine Frage. Das Datum kommt automatisch.
 
-type Schritt = 'erzaehlen' | 'gefuehl' | 'kategorie' | 'fertig';
+type Schritt = 'erzaehlen' | 'waerme' | 'gefuehl' | 'kategorie' | 'fertig';
 
 export default function NeuerEintrag() {
   const { sprechen, tippen } = useLocalSearchParams<{ sprechen?: string; tippen?: string }>();
@@ -27,6 +29,8 @@ export default function NeuerEintrag() {
   const [hoert, setHoert] = useState(false);
   const [gewaehltGefuehle, setGefuehle] = useState<string[]>([]);
   const [gewaehltKat, setKat] = useState<KategorieId[]>([]);
+  const [waerme, setWaerme] = useState<Waerme | null>(null);
+  const f = formen(z.person);
   const [gespeichert, setGespeichert] = useState<{ eintrag: Eintrag; muster: { id: KategorieId; anzahl: number } | null; nummer: number } | null>(null);
   const kannSprechen = useRef(spracheVerfuegbar()).current;
   const feld = useRef<TextInput>(null);
@@ -57,12 +61,10 @@ export default function NeuerEintrag() {
   const umschalten = <T,>(liste: T[], wert: T) => (liste.includes(wert) ? liste.filter((x) => x !== wert) : [...liste, wert]);
 
   const speichern = () => {
-    const eintrag = eintragSpeichern({ text: text.trim(), gefuehle: gewaehltGefuehle, kategorien: gewaehltKat });
+    const eintrag = eintragSpeichern({ text: text.trim(), gefuehle: gewaehltGefuehle, kategorien: gewaehltKat, waerme });
     const alle = [eintrag, ...z.eintraege];
     const muster = erkannteMuster(alle).find((m) => gewaehltKat.includes(m.id)) ?? null;
     setGespeichert({ eintrag, muster, nummer: alle.length });
-    // KI-Einordnung: im MVP aus (Platzhalter, ruft keinen Server an)
-    ordneEin(eintrag.text, eintrag.kategorien).catch(() => null);
     vibriere('erfolg');
     setSchritt('fertig');
   };
@@ -114,7 +116,7 @@ export default function NeuerEintrag() {
               onChangeText={setText}
               editable={!hoert}
               multiline
-              placeholder="Zum Beispiel: Er hat meine Nachricht gelesen und zwei Tage nicht geantwortet."
+              placeholder={`Zum Beispiel: ${f.Er} hat meine Nachricht gelesen und zwei Tage nicht geantwortet.`}
               placeholderTextColor={farben.textHell}
               style={s.feld}
               textAlignVertical="top"
@@ -125,11 +127,37 @@ export default function NeuerEintrag() {
             aus={!text.trim() || hoert}
             onPress={() => {
               stoppeZuhoeren();
-              setSchritt('gefuehl');
+              setSchritt('waerme');
             }}
           />
           <NurAufDemHandy text="Bleibt nur auf deinem Handy." />
         </KeyboardAvoidingView>
+      </Bildschirm>
+    );
+  }
+
+  if (schritt === 'waerme') {
+    return (
+      <Bildschirm verlauf={verlaeufe.tagebuch}>
+        {kopf}
+        <Einblenden>
+          <Txt groesse={28} gewicht="serifFett">
+            {`War ${f.er} gerade warm oder kalt?`}
+          </Txt>
+        </Einblenden>
+        <Txt groesse={15} farbe={farben.textLeise}>
+          Daraus wird deine Heiß-kalt-Kurve.
+        </Txt>
+        <View style={{ gap: 10 }}>
+          {WAERME_WAHL.map((w, i) => (
+            <Einblenden key={w.id} verz={100 + i * 80}>
+              <Knopf text={w.text} art={waerme === w.id ? 'voll' : 'glas'} onPress={() => setWaerme(w.id)} />
+            </Einblenden>
+          ))}
+        </View>
+        <View style={{ flex: 1 }} />
+        <Knopf text="Weiter" onPress={() => setSchritt('gefuehl')} />
+        <Knopf text="Zurück" art="leise" onPress={() => setSchritt('erzaehlen')} />
       </Bildschirm>
     );
   }
@@ -153,7 +181,7 @@ export default function NeuerEintrag() {
         </Einblenden>
         <View style={{ flex: 1 }} />
         <Knopf text="Weiter" onPress={() => setSchritt('kategorie')} />
-        <Knopf text="Zurück" art="leise" onPress={() => setSchritt('erzaehlen')} />
+        <Knopf text="Zurück" art="leise" onPress={() => setSchritt('waerme')} />
       </Bildschirm>
     );
   }
@@ -200,17 +228,17 @@ function Fertig({ gespeichert, kopf }: { gespeichert: { eintrag: Eintrag; muster
     <Bildschirm verlauf={verlaeufe.muster}>
       {kopf}
       <View style={{ alignItems: 'center', gap: 12, marginTop: 20 }}>
-        <Animated.View style={[s.haken, { transform: [{ scale: a }] }]}>
-          <Haken groesse={44} />
+        <Animated.View style={{ transform: [{ scale: a }] }}>
+          <KleineFlagge groesse={64} />
         </Animated.View>
         <Einblenden verz={200}>
           <Txt groesse={32} gewicht="serifFett" mitte>
-            Festgehalten.
+            Neue Flagge gesetzt.
           </Txt>
         </Einblenden>
         <Einblenden verz={320}>
           <Txt groesse={16} farbe={farben.textLeise} mitte style={{ paddingHorizontal: 20 }}>
-            {nummer === 1 ? 'Dein erster Eintrag. Ab jetzt zählt, was wirklich passiert ist.' : `Eintrag Nr. ${nummer}. Jeder Eintrag macht das Bild klarer.`}
+            {nummer === 1 ? 'Deine erste Flagge steht auf dem Hügel. Ab jetzt zählt, was wirklich passiert ist.' : `Flagge Nr. ${nummer}. Jede macht das Bild klarer.`}
           </Txt>
         </Einblenden>
       </View>
@@ -238,7 +266,7 @@ function Fertig({ gespeichert, kopf }: { gespeichert: { eintrag: Eintrag; muster
 }
 
 const s = StyleSheet.create({
-  zu: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.8)', alignItems: 'center', justifyContent: 'center' },
+  zu: { width: 40, height: 40, borderRadius: 20, backgroundColor: farben.karte, borderWidth: 1, borderColor: farben.karteRand, alignItems: 'center', justifyContent: 'center' },
   feld: { flex: 1, fontFamily: schrift.halbfett, fontSize: 17, lineHeight: 25, color: farben.text, outlineStyle: 'none' } as object,
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   haken: { width: 92, height: 92, borderRadius: 46, backgroundColor: farben.akzent, alignItems: 'center', justifyContent: 'center', boxShadow: '0px 12px 28px rgba(184,70,60,0.3)' },

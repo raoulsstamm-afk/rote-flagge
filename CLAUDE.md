@@ -1,8 +1,18 @@
 # Rote Flagge: App-Code
 
-Rote Flagge ist ein Beweis-Tagebuch für Menschen in Beziehungen, die sie verunsichern (Partner, Ex, Familie).
-Kernversprechen: "Halte fest, was passiert. Damit du dir selbst wieder glaubst." Vorfälle mit Datum festhalten (sprechen oder tippen), nach ein paar Wochen zeigt die App das Muster. Zweiter Baustein: "Schreib's hier statt ihm" (Nachricht 24 Stunden parken, Kontaktpause-Zähler).
-Fabrik-App Nr. 3 (Hintergrund: `claude-wissen/wissen/app-fabrik/README.md`, Konzept `apps/knaeuel/konzept-entwurf.md`, Arbeitstitel war "Knäuel").
+**Neuaufbau seit 23.11.2026 (Raoul):** Rote Flagge ist eine Beziehungs-App für jede Phase (Kennenlernen, Es ist kompliziert/warmgehalten, Zusammen, Getrennt) nach dem Drangduell-Prinzip: große Zahl ("Tage Kontaktpause" nach der Trennung, sonst "Tage bei dir"), großer SOS-Knopf "Ich will ihm schreiben", Tagebuch mit Spracheingabe (jede Eintragung = eine rote Flagge auf dem Hügel) und KI-Musterbericht mit Bildern (Heiß-kalt-Kurve, Muster-Karten, "Was gesagt wird / was passiert"). Konzept: Claude Doc https://claude.ai/artifact/MPF8eHZue6B6xwbvyPPboQ.
+Kernversprechen: "Wieder klar sehen." Fabrik-App (Hintergrund: `claude-wissen/wissen/app-fabrik/README.md`, alter Konzept-Ordner `apps/knaeuel/`).
+
+## Aufbau heute (23.11.2026)
+- Design: warme Nacht (Pflaume, `src/theme.ts`), Halation in Koralle/Morgenrot (`src/components/Licht.tsx`), Koralle `#FF7A63` nur für Flagge, Hauptknopf, Fortschritt, auf Koralle dunkle Schrift. Überschriften Fraunces weiß mit dunkler Kontur, Text Nunito.
+- Figuren (`src/components/Figur.tsx`, SVG-Platzhalter bis KI-Posen): "Du" = weißes Leucht-Strichmännchen (Posen stehen, jubeln, winken, handy, denken, atmen, zeigen), die andere Person = graue Schattenfigur ohne Gesicht. `KleineFlagge` = Symbol und Belohnung. Kein Maskottchen.
+- Szene (`Szene.tsx`, Stufen `src/data/stufen.ts`): Nacht, Morgengrauen (3), Sonnenaufgang (7), Neuer Tag (14), Weites Land (30). Flaggen = Einträge.
+- Onboarding (`src/app/onboarding.tsx`, Ablauf `ABLAUF`): 2 Intro-Szenen, Phase (`src/data/phasen.ts`), Person mit Pronomen und Name (`src/data/person.ts`, `formen()` für alle Texte er/sie/neutral), 5 Fragen (`src/data/quiz.ts`: Karten, Chips, Regler), Ziel 30/60/90, Auswertung, Ergebnis ("Dein Muster"), SOS ausprobieren (echte Nachricht parken), erste Flagge, Plan, Erinnerung (Zeitrad), Paywall (Optik, 39,99/7,99).
+- Tabs (`src/app/(tabs)/`): Heute, Tagebuch, SOS-Knopf Mitte (öffnet `src/app/sos.tsx`: schreiben, eigene Flaggen + verblassende Schattenfigur, parken, Atemrunde 4/2/6, geschafft), Muster, Profil (= `einstellungen.tsx`).
+- Eintrag (`eintrag.tsx`): erzählen, warm/kalt (`waerme`), Gefühl, Kategorien (neu `warmkalt`).
+- KI: `src/ki/musterKI.ts` mit `KI_AKTIV = false`, sonst rechnet `lokalerBericht()` selbst. Server-Funktion vorbereitet in `supabase/functions/rote-flagge-muster/` (nicht hochgeladen, Limit-Tabelle fehlt). Einwilligung per Schalter in Muster (`z.kiEinwilligung`).
+- Speicher `rote-flagge-v2` (alte v1-Einträge werden übernommen, Onboarding startet neu).
+- Töne fehlen noch (expo-audio braucht neuen Build, dann Dopamin-Baukasten aus Drangduell mit `requireOptionalNativeModule`-Schutz).
 
 ## Für jeden Claude, der hier arbeitet
 - Raoul programmiert nicht selbst. Erklärungen einfach halten, Dashboard-Schritte klickgenau. Antworten und App-Texte auf Deutsch, keine Gedankenstriche (em-dashes).

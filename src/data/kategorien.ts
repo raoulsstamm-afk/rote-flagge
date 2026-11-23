@@ -1,5 +1,6 @@
 // Was ist passiert? Kategorien beschreiben Verhalten, nie die Person (keine Diagnosewörter).
 export type KategorieId =
+  | 'warmkalt'
   | 'ignoriert'
   | 'angeschrien'
   | 'versprechen'
@@ -12,6 +13,7 @@ export type KategorieId =
   | 'anderes';
 
 export const kategorien: { id: KategorieId; name: string; kurz: string }[] = [
+  { id: 'warmkalt', name: 'Erst nah, dann weg', kurz: 'erst nah, dann weg' },
   { id: 'ignoriert', name: 'Ignoriert', kurz: 'ignoriert' },
   { id: 'angeschrien', name: 'Angeschrien', kurz: 'angeschrien' },
   { id: 'versprechen', name: 'Versprechen gebrochen', kurz: 'Versprechen gebrochen' },
@@ -28,4 +30,13 @@ export const kategorieName = (id: KategorieId) => kategorien.find((k) => k.id ==
 export const kategorieKurz = (id: KategorieId) => kategorien.find((k) => k.id === id)?.kurz ?? id;
 
 // Wie ging's dir danach?
-export const gefuehle = ['Klein', 'Verwirrt', 'Schuldig', 'Traurig', 'Wütend', 'Ängstlich', 'Leer', 'Erschöpft', 'Ruhig'];
+export const gefuehle = ['Klein', 'Verwirrt', 'Schuldig', 'Traurig', 'Wütend', 'Ängstlich', 'Leer', 'Erschöpft', 'Hoffnungsvoll', 'Ruhig'];
+
+// War die andere Person gerade warm oder kalt? Daraus entsteht die Heiß-kalt-Kurve.
+export type Waerme = 'warm' | 'kalt' | 'beides';
+export const WAERME_WAHL: { id: Waerme; text: string }[] = [
+  { id: 'warm', text: 'Warm und nah' },
+  { id: 'kalt', text: 'Kalt und weg' },
+  { id: 'beides', text: 'Beides auf einmal' },
+];
+export const waermeWert = (w: Waerme | null | undefined) => (w === 'warm' ? 1 : w === 'kalt' ? -1 : 0);
