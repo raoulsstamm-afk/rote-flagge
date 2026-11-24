@@ -638,13 +638,11 @@ function Erinnerung({ onWeiter }: { onWeiter: () => void }) {
 }
 
 // Harte Paywall (nur Optik bis RevenueCat): baut sich Stück für Stück auf, persönlicher Titel aus dem Quiz,
-// kleine Feature-Karten, Zeitleiste Heute/Tag 5/Tag 7, Jahr und Monat nebeneinander, Figur guckt hinter der Jahreskarte vor.
+// kleine Feature-Karten, Zeitleiste Heute/Tag 5/Tag 7, Jahr und Monat immer nebeneinander, Figur guckt hinter der Jahreskarte vor.
 function Paywall({ onFertig }: { onFertig: () => void }) {
   const { z, vibriere } = useApp();
   const [plan, setPlan] = useState<'jahr' | 'monat'>('jahr');
   const [hinweis, setHinweis] = useState(false);
-  // Split-Test-Bibliothek (Raoul 24.11.2026): Jahresabo als Monatspreis, Monatsabo erst nach "Alle Pläne"
-  const [allePlaene, setAllePlaene] = useState(false);
   // Kleine iPhones (375 x 667): Knäuel und Abstände kleiner, damit nichts über der Zeitleiste liegt (Raoul 24.11.2026)
   const klein = useWindowDimensions().height < 740;
   const titel = z.phase === 'getrennt' ? `Dein Weg raus.\nIn ${z.ziel} Tagen.` : `Wieder klar sehen.\nIn ${z.ziel} Tagen.`;
@@ -687,16 +685,15 @@ function Paywall({ onFertig }: { onFertig: () => void }) {
       <View style={{ flex: 1 }} />
       <Einblenden verz={480} stil={{ flexDirection: 'row', gap: 12 }}>
         <View style={{ flex: 1 }}>
-          <View style={{ position: 'absolute', right: 12, top: klein ? -64 : -104, zIndex: 0 }}>
-            <Figur pose={'winken' as Pose} groesse={klein ? 62 : 100} />
+          <View style={{ position: 'absolute', right: 12, top: klein ? -50 : -104, zIndex: 0 }}>
+            <Figur pose={'winken' as Pose} groesse={klein ? 50 : 100} />
           </View>
-          <PlanKarte an={plan === 'jahr'} marke={`${GRATIS_TAGE} Tage gratis`} titel="Jahr" preis={PREIS_JAHR_PRO_MONAT} unter={`pro Monat, ${PREIS_JAHR} jährlich`} onPress={() => setPlan('jahr')} />
+          {/* Raoul 24.11.2026 (nachmittags): beide Abos immer sichtbar, Jahresabo mit Jahrespreis und "jährlich abgerechnet" */}
+          <PlanKarte an={plan === 'jahr'} marke={`${GRATIS_TAGE} Tage gratis`} titel="Jahresabo" preis={PREIS_JAHR} unter={`jährlich abgerechnet\nnur ${PREIS_JAHR_PRO_MONAT} im Monat`} onPress={() => setPlan('jahr')} />
         </View>
-        {allePlaene ? (
-          <View style={{ flex: 1 }}>
-            <PlanKarte an={plan === 'monat'} titel="Monat" preis={PREIS_MONAT} unter="monatlich kündbar" onPress={() => setPlan('monat')} />
-          </View>
-        ) : null}
+        <View style={{ flex: 1 }}>
+          <PlanKarte an={plan === 'monat'} titel="Monatsabo" preis={PREIS_MONAT} unter="monatlich abgerechnet" onPress={() => setPlan('monat')} />
+        </View>
       </Einblenden>
       {hinweis ? (
         <Txt groesse={13} farbe={farben.akzent} mitte>
@@ -706,18 +703,9 @@ function Paywall({ onFertig }: { onFertig: () => void }) {
       <Einblenden verz={600}>
         <Knopf text={plan === 'jahr' ? `${GRATIS_TAGE} Tage gratis testen` : 'Monatlich starten'} onPress={() => setHinweis(true)} />
       </Einblenden>
-      <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 10, marginTop: -4 }}>
-        <Txt groesse={13} gewicht="extra" farbe={farben.textLeise}>
-          {plan === 'jahr' ? 'Heute 0 €. Jederzeit kündbar.' : 'Jederzeit kündbar.'}
-        </Txt>
-        {!allePlaene ? (
-          <Pressable onPress={() => { vibriere('leicht'); setAllePlaene(true); }} hitSlop={10} accessibilityRole="button">
-            <Txt groesse={13} gewicht="extra" farbe={farben.textHell} style={{ textDecorationLine: 'underline' }}>
-              Alle Pläne
-            </Txt>
-          </Pressable>
-        ) : null}
-      </View>
+      <Txt groesse={13} gewicht="extra" farbe={farben.textLeise} mitte style={{ marginTop: -4 }}>
+        {plan === 'jahr' ? `Heute 0 €, ab Tag ${GRATIS_TAGE + 1} ${PREIS_JAHR} pro Jahr. Jederzeit kündbar.` : 'Jederzeit kündbar.'}
+      </Txt>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
         <Txt groesse={12} farbe={farben.textHell}>
           Wiederherstellen · Bedingungen
