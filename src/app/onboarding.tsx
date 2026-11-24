@@ -1,7 +1,7 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { ReactNode, useEffect, useRef, useState } from 'react';
-import { Animated, Easing, KeyboardAvoidingView, Platform, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { Animated, Easing, KeyboardAvoidingView, Platform, Pressable, StyleSheet, TextInput, useWindowDimensions, View } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import { erlaubnisAnfragen } from '@/benachrichtigung';
 import { Zeitrad } from '@/components/Drehrad';
@@ -645,6 +645,8 @@ function Paywall({ onFertig }: { onFertig: () => void }) {
   const [hinweis, setHinweis] = useState(false);
   // Split-Test-Bibliothek (Raoul 24.11.2026): Jahresabo als Monatspreis, Monatsabo erst nach "Alle Pläne"
   const [allePlaene, setAllePlaene] = useState(false);
+  // Kleine iPhones (375 x 667): Knäuel und Abstände kleiner, damit nichts über der Zeitleiste liegt (Raoul 24.11.2026)
+  const klein = useWindowDimensions().height < 740;
   const titel = z.phase === 'getrennt' ? `Dein Weg raus.\nIn ${z.ziel} Tagen.` : `Wieder klar sehen.\nIn ${z.ziel} Tagen.`;
   const zeit = [
     { fett: 'Heute', text: 'Alles frei. Dein Weg startet.' },
@@ -654,7 +656,7 @@ function Paywall({ onFertig }: { onFertig: () => void }) {
   return (
     <Bildschirm stil={{ gap: 12 }}>
       <Einblenden>
-        <Txt groesse={32} gewicht="serifFett" mitte>
+        <Txt groesse={klein ? 27 : 32} gewicht="serifFett" mitte>
           {titel}
         </Txt>
       </Einblenden>
@@ -667,7 +669,7 @@ function Paywall({ onFertig }: { onFertig: () => void }) {
           </View>
         ))}
       </Einblenden>
-      <Einblenden verz={300} stil={{ alignSelf: 'center', width: '82%', gap: 12, marginTop: 6 }}>
+      <Einblenden verz={300} stil={{ alignSelf: 'center', width: '82%', gap: klein ? 6 : 12, marginTop: klein ? 0 : 6 }}>
         {zeit.map((p, k) => (
           <View key={p.fett} style={{ flexDirection: 'row', gap: 12 }}>
             <View style={[s.zeitPunkt, k === 0 && { backgroundColor: farben.akzent, boxShadow: schatten.leuchten }]} />
@@ -685,8 +687,8 @@ function Paywall({ onFertig }: { onFertig: () => void }) {
       <View style={{ flex: 1 }} />
       <Einblenden verz={480} stil={{ flexDirection: 'row', gap: 12 }}>
         <View style={{ flex: 1 }}>
-          <View style={{ position: 'absolute', right: 12, top: -104, zIndex: 0 }}>
-            <Figur pose={'winken' as Pose} groesse={100} />
+          <View style={{ position: 'absolute', right: 12, top: klein ? -64 : -104, zIndex: 0 }}>
+            <Figur pose={'winken' as Pose} groesse={klein ? 62 : 100} />
           </View>
           <PlanKarte an={plan === 'jahr'} marke={`${GRATIS_TAGE} Tage gratis`} titel="Jahr" preis={PREIS_JAHR_PRO_MONAT} unter={`pro Monat, ${PREIS_JAHR} jährlich`} onPress={() => setPlan('jahr')} />
         </View>
