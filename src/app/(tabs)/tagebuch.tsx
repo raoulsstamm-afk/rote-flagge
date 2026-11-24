@@ -3,6 +3,7 @@ import { router } from 'expo-router';
 import { Animated, Pressable, StyleSheet, View } from 'react-native';
 import { KleineFlagge } from '@/components/Figur';
 import { Mikro, Stift } from '@/components/Symbole';
+import { TabKopf } from '@/components/TabKopf';
 import { Txt } from '@/components/Txt';
 import { Bildschirm, Einblenden, Knopf, NurAufDemHandy, useFeder } from '@/components/ui';
 import { kategorieName, kategorieKurz } from '@/data/kategorien';
@@ -22,17 +23,15 @@ export default function Tagebuch() {
 
   return (
     <Bildschirm verlauf={verlaeufe.tagebuch} scroll unten={LEISTE_PLATZ}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-        <KleineFlagge groesse={22} />
-        <Txt groesse={28} gewicht="serifFett" style={{ flex: 1 }}>
-          Tagebuch
-        </Txt>
-        {!leer ? (
+      <TabKopf schritt={1} was="Anzeichen festhalten" titel="Tagebuch" />
+      {!leer ? (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: -10 }}>
+          <KleineFlagge groesse={16} wehen={false} />
           <Txt groesse={14} gewicht="fett" farbe={farben.textLeise}>
             {z.eintraege.length} festgehalten
           </Txt>
-        ) : null}
-      </View>
+        </View>
+      ) : null}
 
       <Einblenden>
         <Animated.View style={feder.stil}>

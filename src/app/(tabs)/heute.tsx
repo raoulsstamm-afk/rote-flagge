@@ -2,7 +2,8 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, useWindowDimensions, View } from 'react-native';
 import { Leuchten } from '@/components/Licht';
-import { Haken, Stift } from '@/components/Symbole';
+import { Haken } from '@/components/Symbole';
+import { TabKopf } from '@/components/TabKopf';
 import { Szene } from '@/components/Szene';
 import { Txt } from '@/components/Txt';
 import { Balken, Bildschirm, Einblenden, Knopf, Rueckfrage } from '@/components/ui';
@@ -11,7 +12,7 @@ import { stufeZu } from '@/data/stufen';
 import { berechne, useApp } from '@/state/store';
 import { farben, LEISTE_PLATZ } from '@/theme';
 
-// Heute: eine große Zahl, die Szene (wird mit den Tagen heller, deine Flaggen stehen auf dem Hügel)
+// Heute (Schritt 3, auflösen): eine große Zahl, die Szene (wird mit den Tagen heller, deine Flaggen stehen auf dem Hügel)
 // und ein großer Knopf für den schwersten Moment. Quittr/Drangduell-Prinzip.
 export default function Heute() {
   const { z, vibriere, heuteBeiMir, kontaktGehabt, kontaktpauseStarten } = useApp();
@@ -24,7 +25,8 @@ export default function Heute() {
 
   return (
     <Bildschirm scroll unten={LEISTE_PLATZ} stil={{ gap: 12 }}>
-      <View style={{ alignItems: 'center', marginTop: 6 }}>
+      <TabKopf schritt={3} was="Muster auflösen" />
+      <View style={{ alignItems: 'center', marginTop: -6 }}>
         <Leuchten groesse={260} staerke={0.3} />
         <Einblenden>
           <Txt groesse={104} gewicht="serifFett" mitte style={{ lineHeight: 112, textShadowColor: 'rgba(255,140,110,0.55)', textShadowRadius: 24, textShadowOffset: { width: 0, height: 0 } }}>
@@ -78,13 +80,6 @@ export default function Heute() {
       )}
 
       <Knopf text={`SOS: Ich will ${f.ihm} schreiben`} onPress={() => router.push('/sos')} />
-
-      <Pressable onPress={() => router.push({ pathname: '/eintrag', params: { sprechen: '1' } })} style={{ flexDirection: 'row', alignSelf: 'center', alignItems: 'center', gap: 6, paddingVertical: 6 }} accessibilityRole="button">
-        <Stift farbe={farben.akzent} />
-        <Txt groesse={15} gewicht="extra" farbe={farben.akzent}>
-          Etwas festhalten
-        </Txt>
-      </Pressable>
 
       {b.kontakt && z.kontaktpause.start ? (
         <Pressable onPress={() => setFrage(true)} style={{ alignSelf: 'center', paddingVertical: 4 }} accessibilityRole="button">

@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { StyleSheet, Switch, useWindowDimensions, View } from 'react-native';
 import Svg, { Circle, Defs, Line, LinearGradient, Path, Stop, Text as SvgText } from 'react-native-svg';
 import { KleineFlagge } from '@/components/Figur';
+import { TabKopf } from '@/components/TabKopf';
 import { Txt } from '@/components/Txt';
 import { Balken, Bildschirm, Einblenden, HilfeKarte, Karte, Knopf, NurAufDemHandy } from '@/components/ui';
 import { kategorieName } from '@/data/kategorien';
@@ -39,9 +40,7 @@ export default function Muster() {
 
   return (
     <Bildschirm scroll unten={LEISTE_PLATZ}>
-      <Txt groesse={30} gewicht="serifFett">
-        Deine Muster
-      </Txt>
+      <TabKopf schritt={2} was="Muster erkennen" titel="Deine Muster" />
       <Txt groesse={14} farbe={farben.textHell} style={{ marginTop: -10 }}>
         Letzte 4 Wochen · {vier.length} {vier.length === 1 ? 'Flagge' : 'Flaggen'}
       </Txt>

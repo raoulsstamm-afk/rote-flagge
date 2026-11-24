@@ -1,8 +1,8 @@
 import type { KategorieId } from './kategorien';
 import type { formen } from './person';
 
-// Onboarding-Quiz (Redesign 23.11.2026). Gemischte Formate: Karten (höchstens 4), Mehrfachwahl als Chips,
-// ein Regler. Fragen beschreiben Verhalten und Alltag, nie eine Diagnose. Antworten tauchen in Ergebnis,
+// Onboarding-Quiz (Redesign 23.11.2026, zwei Regler seit 24.11.). Gemischte Formate: Karten (höchstens 4), Mehrfachwahl als Chips,
+// Regler mit Knäuel-Posen je Stufe. Fragen beschreiben Verhalten und Alltag, nie eine Diagnose. Antworten tauchen in Ergebnis,
 // Plan, Tagebuch und SOS wieder auf.
 type F = ReturnType<typeof formen>;
 export type QuizAntworten = Record<string, string | string[] | number>;
@@ -10,7 +10,7 @@ export type QuizAntworten = Record<string, string | string[] | number>;
 export type Frage =
   | { id: string; art: 'karten'; titel: (f: F) => string; optionen: { id: string; text: (f: F) => string; icon: string }[] }
   | { id: string; art: 'chips'; titel: (f: F) => string; unter: string; optionen: { id: string; text: (f: F) => string; kategorie?: KategorieId }[] }
-  | { id: string; art: 'regler'; titel: (f: F) => string; stufen: string[] };
+  | { id: string; art: 'regler'; titel: (f: F) => string; stufen: string[]; posen: string[] };
 
 export const FRAGEN: Frage[] = [
   {
@@ -23,6 +23,13 @@ export const FRAGEN: Frage[] = [
       { id: 'verwirrt', text: () => 'Verwirrt', icon: 'knoten' },
       { id: 'kleiner', text: () => 'Kleiner als vorher', icon: 'klein' },
     ],
+  },
+  {
+    id: 'gedanken',
+    art: 'regler',
+    titel: (f) => `Wie oft denkst du an ${f.ihn}?`,
+    stufen: ['Selten', 'Ab und zu', 'Täglich', 'Mehrmals täglich', 'Ständig'],
+    posen: ['schlafen', 'stehen', 'denken', 'verheddert', 'verheddert'],
   },
   {
     id: 'kennst',
@@ -41,10 +48,11 @@ export const FRAGEN: Frage[] = [
     ],
   },
   {
-    id: 'gedanken',
+    id: 'handy',
     art: 'regler',
-    titel: (f) => `Wie oft denkst du an ${f.ihn}?`,
-    stufen: ['Selten', 'Ab und zu', 'Täglich', 'Mehrmals täglich', 'Ständig'],
+    titel: (f) => `Wie oft schaust du, ob ${f.er} geschrieben hat?`,
+    stufen: ['Kaum', 'Ab und zu', 'Oft', 'Ständig', 'Alle paar Minuten'],
+    posen: ['schlafen', 'stehen', 'denken', 'handy', 'handy'],
   },
   {
     id: 'schwer',

@@ -23,7 +23,7 @@ function beispiel(phase = 'kompliziert') {
     phase,
     person: { name: 'Jonas', pronomen: 'er' },
     ziel: 30,
-    quiz: { danach: 'verwirrt', kennst: ['warmkalt', 'schuld', 'warten'], gedanken: 3, schwer: ['abends', 'still'], zurueck: ['ruhe', 'selbstwert'] },
+    quiz: { danach: 'verwirrt', kennst: ['warmkalt', 'schuld', 'warten'], gedanken: 3, handy: 3, schwer: ['abends', 'still'], zurueck: ['ruhe', 'selbstwert'] },
     erinnerung: '21:30',
     appSperre: false,
     tageBeiDir: tage,
@@ -88,10 +88,16 @@ function beispiel(phase = 'kompliziert') {
   // Onboarding
   await seite.goto(basis);
   await warte(3500);
-  await foto('intro_1');
-  await knopf('Kenn ich');
-  await foto('intro_2');
+  await warte(1200);
+  await foto('willkommen');
   await knopf("Los geht's");
+  await warte(900);
+  await knopf('Du bist echt zu empfindlich.');
+  await knopf('Wer schreibt dir da die ganze Zeit?');
+  await foto('zaehlen');
+  await knopf('Auflösen (2 Flaggen)');
+  await foto('zaehlen_aufgeloest');
+  await knopf('Weiter');
   await knopf('Es ist kompliziert');
   await foto('phase');
   await knopf('Weiter');
@@ -102,12 +108,14 @@ function beispiel(phase = 'kompliziert') {
   await knopf('Verwirrt');
   await foto('frage_danach');
   await knopf('Weiter');
+  await foto('frage_gedanken');
+  await knopf('Weiter');
   await knopf('Erst ganz nah, dann tagelang still');
   await knopf('Am Ende bin ich schuld');
   await knopf('Ich warte ständig auf eine Nachricht');
   await foto('frage_kennst');
   await knopf('Weiter');
-  await foto('frage_gedanken');
+  await foto('frage_handy');
   await knopf('Weiter');
   await knopf('Abends im Bett');
   await knopf('Wenn er nicht antwortet');
@@ -173,7 +181,9 @@ function beispiel(phase = 'kompliziert') {
   await knopf('Festhalten');
   await foto('eintrag_fertig');
   await knopf('Fertig');
-  await seite.getByLabel('SOS: Ich will schreiben', { exact: true }).first().click();
+  await seite.getByLabel('Heute', { exact: true }).first().click();
+  await warte(600);
+  await seite.getByText(/^SOS: Ich will/).last().click();
   await warte(600);
   await seite.locator('textarea').first().fill('Hey, ich muss die ganze Zeit an dich denken.');
   await foto('sos_schreiben');
@@ -193,7 +203,7 @@ function beispiel(phase = 'kompliziert') {
   await seite.goto(`${basis}/heute`);
   await warte(2500);
   await foto('heute_getrennt');
-  await seite.getByLabel('Profil', { exact: true }).first().click();
+  await seite.getByLabel('Einstellungen', { exact: true }).last().click();
   await foto('einstellungen');
 
   // Leer nach dem Onboarding

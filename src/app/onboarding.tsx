@@ -2,7 +2,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { ReactNode, useEffect, useRef, useState } from 'react';
 import { Animated, Easing, KeyboardAvoidingView, Platform, Pressable, StyleSheet, TextInput, useWindowDimensions, View } from 'react-native';
-import Svg, { Circle } from 'react-native-svg';
+import Svg, { Circle, Path } from 'react-native-svg';
 import { erlaubnisAnfragen } from '@/benachrichtigung';
 import { Zeitrad } from '@/components/Drehrad';
 import { Figur, KleineFlagge, Pose } from '@/components/Figur';
@@ -17,15 +17,16 @@ import { deinMuster, FRAGEN, liste, quizSchwerpunkte, ZIELE } from '@/data/quiz'
 import { useApp } from '@/state/store';
 import { farben, schatten, schrift, verlaeufe } from '@/theme';
 
-// Onboarding (Redesign 23.11.2026, Raoul): ein Modus für alle Phasen. Zwei bewegte Intro-Szenen, "Wo stehst du?",
+// Onboarding (Redesign 23.11.2026, Raoul; 24.11.: Willkommen mit Fahne schwenkendem Knäuel, "Wie viele rote Flaggen
+// zählst du?", Plan in 3 Schritten, mehr Regler und Knäuel-Posen). Ein Modus für alle Phasen. "Wo stehst du?",
 // "Um wen geht's?", 5 Fragen in gemischten Formaten, Ziel, Auswertung, Ergebnis mit deinem Muster,
 // SOS ausprobieren (echte Nachricht parken), erste Flagge, Plan, Erinnerung, harte Paywall.
 // Regeln: kein Scrollen auf 390 x 844, höchstens 4 Antwortkarten, Weiter-Knopf auf jedem Bildschirm, kein Auto-Weiter.
 // Jede Antwort pflanzt eine kleine Flagge in die Leiste oben.
 
 type Schritt =
-  | 'intro1'
-  | 'intro2'
+  | 'willkommen'
+  | 'zaehlen'
   | 'phase'
   | 'person'
   | `frage${number}`
@@ -38,7 +39,7 @@ type Schritt =
   | 'erinnerung'
   | 'paywall';
 
-const ABLAUF: Schritt[] = ['intro1', 'intro2', 'phase', 'person', ...FRAGEN.map((_, i) => `frage${i}` as Schritt), 'ziel', 'auswertung', 'ergebnis', 'ausprobieren', 'flagge', 'plan', 'erinnerung', 'paywall'];
+const ABLAUF: Schritt[] = ['willkommen', 'zaehlen', 'phase', 'person', ...FRAGEN.map((_, i) => `frage${i}` as Schritt), 'ziel', 'auswertung', 'ergebnis', 'ausprobieren', 'flagge', 'plan', 'erinnerung', 'paywall'];
 const MIT_LEISTE: Schritt[] = ['phase', 'person', ...FRAGEN.map((_, i) => `frage${i}` as Schritt), 'ziel'];
 
 export default function Onboarding() {
@@ -61,39 +62,13 @@ export default function Onboarding() {
     </Bildschirm>
   );
 
-  // 1 und 2: bewegte Szenen wie in den Reels
-  if (schritt === 'intro1' || schritt === 'intro2') {
-    const erste = schritt === 'intro1';
-    return (
-      <Bildschirm>
-        <Pressable style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 18 }} onPress={weiter} accessibilityRole="button">
-          <Zoom key={schritt}>
-            <View style={{ alignItems: 'center', justifyContent: 'center' }}>
-              <Leuchten groesse={320} farbe={erste ? '#9CC4FF' : farben.morgen} staerke={erste ? 0.22 : 0.35} />
-              <Figur pose={erste ? 'handy' : 'entwirren'} groesse={150} />
-            </View>
-          </Zoom>
-          <Einblenden verz={300}>
-            <Txt groesse={34} gewicht="serifFett" mitte>
-              {erste ? 'Tippen. Löschen.\nWieder tippen.' : 'Du musst nicht\nantworten.'}
-            </Txt>
-          </Einblenden>
-          <Einblenden verz={500}>
-            <Txt groesse={16} farbe={farben.textLeise} mitte>
-              {erste ? 'Kennst du das?' : 'Rote Flagge hilft dir, klar zu sehen.'}
-            </Txt>
-          </Einblenden>
-        </Pressable>
-        <Knopf text={erste ? 'Kenn ich' : "Los geht's"} onPress={weiter} />
-        {!erste ? <NurAufDemHandy text="Ab 16. Alles bleibt nur auf deinem Handy." /> : null}
-      </Bildschirm>
-    );
-  }
+  if (schritt === 'willkommen') return <Willkommen onWeiter={weiter} />;
+  if (schritt === 'zaehlen') return <FlaggenZaehlen onWeiter={weiter} />;
 
   if (schritt === 'phase') {
     return rahmen(
       <>
-        <Titel>Wo stehst du gerade?</Titel>
+        <TitelMitFigur pose={z.phase ? PHASE_POSE[z.phase] : 'denken'}>Wo stehst du gerade?</TitelMitFigur>
         <View style={{ gap: 10 }}>
           {PHASEN.map((p, k) => (
             <Einblenden key={p.id} verz={80 * k}>
@@ -111,7 +86,7 @@ export default function Onboarding() {
       <Bildschirm>
         <FlaggenLeiste anzahl={MIT_LEISTE.length} gesetzt={leisteWert} onZurueck={zurueck} />
         <KeyboardAvoidingView style={{ flex: 1, gap: 12 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-          <Titel>Um wen geht's?</Titel>
+          <TitelMitFigur pose={z.person?.pronomen ? 'winken' : 'denken'}>Um wen geht's?</TitelMitFigur>
           <View style={{ gap: 10 }}>
             {PRONOMEN_WAHL.map((p, k) => (
               <Einblenden key={p.id} verz={80 * k}>
@@ -147,7 +122,7 @@ export default function Onboarding() {
     if (q.art === 'karten') {
       return rahmen(
         <>
-          <Titel>{q.titel(f)}</Titel>
+          <TitelMitFigur pose={typeof wert === 'string' ? KARTEN_POSE[wert] ?? 'stehen' : 'denken'}>{q.titel(f)}</TitelMitFigur>
           <View style={{ gap: 10 }}>
             {q.optionen.map((o, k) => (
               <Einblenden key={o.id} verz={80 * k}>
@@ -163,7 +138,7 @@ export default function Onboarding() {
       const gewaehlt = liste(z.quiz, q.id);
       return rahmen(
         <>
-          <Titel>{q.titel(f)}</Titel>
+          <TitelMitFigur pose={gewaehlt.length === 0 ? 'denken' : q.id === 'zurueck' ? 'jubeln' : gewaehlt.length >= 3 ? 'troesten' : 'zeigen'}>{q.titel(f)}</TitelMitFigur>
           <Txt groesse={15} farbe={farben.textLeise} style={{ marginTop: -6 }}>
             {q.unter}
           </Txt>
@@ -185,12 +160,20 @@ export default function Onboarding() {
         <View style={{ flex: 1, justifyContent: 'center', gap: 28 }}>
           <View style={{ alignItems: 'center', height: 180, justifyContent: 'center' }}>
             <Leuchten groesse={200 + stufe * 30} staerke={0.18 + stufe * 0.05} />
-            <Figur pose={stufe >= 3 ? 'handy' : stufe >= 2 ? 'denken' : 'stehen'} groesse={100} />
+            <PopFigur pose={(q.posen[stufe] ?? 'stehen') as Pose} groesse={100 + stufe * 8} />
           </View>
           <Txt groesse={30} gewicht="serifFett" mitte farbe={farben.akzent}>
             {q.stufen[stufe]}
           </Txt>
           <Regler stufen={q.stufen.length} wert={stufe} onWechsel={(v) => setzeWert(v)} />
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: -18 }}>
+            <Txt groesse={13} farbe={farben.textHell}>
+              {q.stufen[0]}
+            </Txt>
+            <Txt groesse={13} farbe={farben.textHell}>
+              {q.stufen[q.stufen.length - 1]}
+            </Txt>
+          </View>
         </View>
       </>,
       <Knopf
@@ -204,18 +187,22 @@ export default function Onboarding() {
   }
 
   if (schritt === 'ziel') {
+    const idx = Math.max(0, ZIELE.indexOf(z.ziel as (typeof ZIELE)[number]));
     return rahmen(
       <>
-        <Titel>Wie viele Tage willst du dir geben?</Titel>
+        <Titel>Wie viele Tage gibst du dir?</Titel>
         <Txt groesse={15} farbe={farben.textLeise} style={{ marginTop: -6 }}>
           {z.phase === 'getrennt' ? 'Tage Kontaktpause. Du kannst jederzeit sanft neu anfangen.' : 'Tage, an denen du bei dir bleibst.'}
         </Txt>
-        <View style={{ gap: 10 }}>
-          {ZIELE.map((t, k) => (
-            <Einblenden key={t} verz={80 * k}>
-              <AntwortKarte text={`${t} Tage`} icon="ziel" an={z.ziel === t} onPress={() => setze({ ziel: t })} />
-            </Einblenden>
-          ))}
+        <View style={{ flex: 1, justifyContent: 'center', gap: 22 }}>
+          <View style={{ alignItems: 'center', height: 190, justifyContent: 'center' }}>
+            <Leuchten groesse={220 + idx * 40} staerke={0.22 + idx * 0.06} />
+            <PopFigur pose={idx === 2 ? 'jubeln' : idx === 1 ? 'flagge' : 'entwirren'} groesse={110 + idx * 12} />
+          </View>
+          <Txt groesse={56} gewicht="serifFett" mitte farbe={farben.akzent} style={{ lineHeight: 62 }}>
+            {`${ZIELE[idx]} Tage`}
+          </Txt>
+          <Regler stufen={ZIELE.length} wert={idx} onWechsel={(v) => setze({ ziel: ZIELE[v] })} />
         </View>
       </>,
       <Knopf text="Weiter" onPress={weiter} />,
@@ -282,45 +269,7 @@ export default function Onboarding() {
       />
     );
 
-  if (schritt === 'plan') {
-    const zurueckWunsch = FRAGEN.find((q) => q.id === 'zurueck');
-    const wunsch = zurueckWunsch && zurueckWunsch.art === 'chips' ? liste(z.quiz, 'zurueck').map((id) => zurueckWunsch.optionen.find((o) => o.id === id)?.text(f)).filter(Boolean)[0] : null;
-    const schwer = FRAGEN.find((q) => q.id === 'schwer');
-    const schwerText = schwer && schwer.art === 'chips' ? liste(z.quiz, 'schwer').map((id) => schwer.optionen.find((o) => o.id === id)?.text(f)).filter(Boolean)[0] : null;
-    const etappen = [
-      { wann: 'Heute', text: 'Deine erste Flagge steht. Die Nacht beginnt.' },
-      { wann: 'Tag 7', text: schwerText ? `${schwerText}: du schreibst hier statt ${f.ihm}.` : `Du schreibst hier statt ${f.ihm}.` },
-      { wann: 'Tag 14', text: 'Deine Heiß-kalt-Kurve zeigt, was sich wiederholt.' },
-      { wann: `Tag ${z.ziel}`, text: wunsch ? `${wunsch} ist wieder da.` : 'Du siehst wieder klar.' },
-    ];
-    return (
-      <Bildschirm>
-        <Titel>Dein Weg</Titel>
-        <View style={{ gap: 0, marginTop: 4 }}>
-          {etappen.map((e, k) => (
-            <Einblenden key={e.wann} verz={150 + k * 220} stil={{ flexDirection: 'row', gap: 14 }}>
-              <View style={{ alignItems: 'center', width: 26 }}>
-                <View style={[s.punkt, k === 0 && { backgroundColor: farben.akzent, boxShadow: schatten.leuchten }]} />
-                {k < etappen.length - 1 ? <View style={{ width: 2, flex: 1, backgroundColor: farben.karteRand, marginVertical: 4 }} /> : null}
-              </View>
-              <View style={{ flex: 1, paddingBottom: 22, gap: 2 }}>
-                <Txt groesse={18} gewicht="extra" farbe={k === 0 ? farben.akzent : farben.text}>
-                  {e.wann}
-                </Txt>
-                <Txt groesse={15} farbe={farben.textLeise}>
-                  {e.text}
-                </Txt>
-              </View>
-            </Einblenden>
-          ))}
-        </View>
-        <View style={{ flex: 1, alignItems: 'flex-end', justifyContent: 'flex-end' }}>
-          <Figur pose="zeigen" groesse={80} />
-        </View>
-        <Knopf text="Weiter" onPress={weiter} />
-      </Bildschirm>
-    );
-  }
+  if (schritt === 'plan') return <Plan onWeiter={weiter} />;
 
   if (schritt === 'erinnerung') return <Erinnerung onWeiter={weiter} />;
 
@@ -333,6 +282,311 @@ export default function Onboarding() {
         router.replace('/heute');
       }}
     />
+  );
+}
+
+const PHASE_POSE: Record<Phase, Pose> = { kennenlernen: 'winken', kompliziert: 'verheddert', zusammen: 'stehen', getrennt: 'troesten' };
+const KARTEN_POSE: Record<string, Pose> = { leichter: 'jubeln', gemischt: 'denken', verwirrt: 'verheddert', kleiner: 'troesten' };
+
+// Knäuel, das bei jedem Posenwechsel kurz ploppt und vibriert
+function PopFigur({ pose, groesse }: { pose: Pose; groesse: number }) {
+  const { vibriere } = useApp();
+  const a = useRef(new Animated.Value(1)).current;
+  const erst = useRef(true);
+  useEffect(() => {
+    if (erst.current) {
+      erst.current = false;
+      return;
+    }
+    vibriere('leicht');
+    a.setValue(0.82);
+    Animated.spring(a, { toValue: 1, friction: 4, tension: 160, useNativeDriver: Platform.OS !== 'web' }).start();
+  }, [pose, a, vibriere]);
+  return (
+    <Animated.View style={{ transform: [{ scale: a }] }}>
+      <Figur pose={pose} groesse={groesse} />
+    </Animated.View>
+  );
+}
+
+function TitelMitFigur({ children, pose }: { children: ReactNode; pose: Pose }) {
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+      <View style={{ flex: 1 }}>
+        <Titel>{children}</Titel>
+      </View>
+      <PopFigur pose={pose} groesse={66} />
+    </View>
+  );
+}
+
+// Willkommen: das Knäuel schwenkt die rote Fahne, kleine Flaggen steigen auf
+function Willkommen({ onWeiter }: { onWeiter: () => void }) {
+  const { vibriere } = useApp();
+  const schwung = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    const t = setTimeout(() => vibriere('mittel'), 650);
+    const l = Animated.loop(
+      Animated.sequence([
+        Animated.timing(schwung, { toValue: 1, duration: 520, easing: Easing.inOut(Easing.sin), useNativeDriver: Platform.OS !== 'web' }),
+        Animated.timing(schwung, { toValue: -1, duration: 1040, easing: Easing.inOut(Easing.sin), useNativeDriver: Platform.OS !== 'web' }),
+        Animated.timing(schwung, { toValue: 0, duration: 520, easing: Easing.inOut(Easing.sin), useNativeDriver: Platform.OS !== 'web' }),
+      ]),
+    );
+    l.start();
+    return () => {
+      clearTimeout(t);
+      l.stop();
+    };
+  }, [schwung, vibriere]);
+  return (
+    <Bildschirm>
+      <Pressable style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 18 }} onPress={onWeiter} accessibilityRole="button">
+        <View style={{ width: 300, height: 290, alignItems: 'center', justifyContent: 'flex-end' }}>
+          <Leuchten groesse={340} staerke={0.4} />
+          {[0, 1, 2, 3, 4].map((k) => (
+            <Aufsteigen key={k} links={30 + k * 58} verz={k * 520} />
+          ))}
+          <Zoom>
+            <Animated.View style={{ transform: [{ rotate: schwung.interpolate({ inputRange: [-1, 1], outputRange: ['-9deg', '9deg'] }) }, { translateY: schwung.interpolate({ inputRange: [-1, 0, 1], outputRange: [-4, 0, -4] }) }] }}>
+              <Figur pose="flagge" groesse={190} />
+            </Animated.View>
+          </Zoom>
+        </View>
+        <Einblenden verz={300}>
+          <Txt groesse={44} gewicht="serifFett" mitte>
+            Rote Flagge
+          </Txt>
+        </Einblenden>
+        <Einblenden verz={520}>
+          <Txt groesse={20} gewicht="fett" farbe={farben.akzent} mitte>
+            Wieder klar sehen.
+          </Txt>
+        </Einblenden>
+        <Einblenden verz={720}>
+          <Txt groesse={15} farbe={farben.textLeise} mitte>
+            Beim Kennenlernen, in der Beziehung und danach.
+          </Txt>
+        </Einblenden>
+      </Pressable>
+      <Knopf text="Los geht's" onPress={onWeiter} />
+      <NurAufDemHandy text="Ab 16. Alles bleibt nur auf deinem Handy." />
+    </Bildschirm>
+  );
+}
+
+// Kleine Flagge, die langsam aufsteigt und verblasst (Endlosschleife)
+function Aufsteigen({ links, verz }: { links: number; verz: number }) {
+  const a = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    const l = Animated.loop(Animated.sequence([Animated.delay(verz), Animated.timing(a, { toValue: 1, duration: 2600, easing: Easing.out(Easing.quad), useNativeDriver: Platform.OS !== 'web' }), Animated.timing(a, { toValue: 0, duration: 0, useNativeDriver: Platform.OS !== 'web' })]));
+    l.start();
+    return () => l.stop();
+  }, [a, verz]);
+  return (
+    <Animated.View pointerEvents="none" style={{ position: 'absolute', left: links, bottom: 60, opacity: a.interpolate({ inputRange: [0, 0.2, 0.8, 1], outputRange: [0, 0.9, 0.6, 0] }), transform: [{ translateY: a.interpolate({ inputRange: [0, 1], outputRange: [0, -200] }) }, { scale: a.interpolate({ inputRange: [0, 1], outputRange: [0.6, 1] }) }] }}>
+      <KleineFlagge groesse={16} />
+    </Animated.View>
+  );
+}
+
+// "Wie viele rote Flaggen zählst du?": Nachrichten antippen, dann auflösen. Beschreibt Verhalten, nie die Person.
+const NACHRICHTEN = [
+  { text: 'Sorry, war busy.', zusatz: 'nach 3 Tagen Funkstille', flagge: true, warum: 'Tagelang weg, dann so tun, als wäre nichts.' },
+  { text: 'Du bist echt zu empfindlich.', flagge: true, warum: 'Deine Gefühle werden kleingeredet.' },
+  { text: 'Samstag 19 Uhr? Ich hab reserviert.', flagge: false, warum: 'Klar und verlässlich. Keine Flagge.' },
+  { text: 'Wer schreibt dir da die ganze Zeit?', flagge: true, warum: 'Kontrolle statt Vertrauen.' },
+  { text: 'Du verstehst mich wie niemand sonst. Aber was Festes will ich nicht.', flagge: true, warum: 'Erst ganz nah, dann auf Abstand.' },
+];
+const RICHTIG = NACHRICHTEN.filter((n) => n.flagge).length;
+
+function FlaggenZaehlen({ onWeiter }: { onWeiter: () => void }) {
+  const { vibriere } = useApp();
+  const [markiert, setMarkiert] = useState<number[]>([]);
+  const [aufgeloest, setAufgeloest] = useState(false);
+  const gefunden = markiert.filter((k) => NACHRICHTEN[k].flagge).length;
+  const pose: Pose = aufgeloest ? (gefunden >= RICHTIG ? 'jubeln' : 'zeigen') : markiert.length ? 'flagge' : 'denken';
+  return (
+    <Bildschirm>
+      <TitelMitFigur pose={pose}>{aufgeloest ? `Es sind ${RICHTIG}.` : 'Wie viele rote Flaggen zählst du?'}</TitelMitFigur>
+      <Txt groesse={15} farbe={farben.textLeise} style={{ marginTop: -8 }}>
+        {aufgeloest ? `Du hast ${gefunden} gefunden. Im Alltag ist das viel schwerer zu sehen.` : 'Tipp jede Nachricht an, die dich stutzig macht.'}
+      </Txt>
+      <View style={{ flex: 1, gap: 9, justifyContent: 'center' }}>
+        {NACHRICHTEN.map((n, k) => {
+          const an = markiert.includes(k);
+          const rand = aufgeloest ? (n.flagge ? farben.akzent : farben.karteRand) : an ? farben.akzent : farben.karteRand;
+          return (
+            <Einblenden key={k} verz={120 + k * 140}>
+              <Pressable
+                disabled={aufgeloest}
+                onPress={() => {
+                  vibriere(an ? 'leicht' : 'mittel');
+                  setMarkiert(an ? markiert.filter((x) => x !== k) : [...markiert, k]);
+                }}
+                accessibilityRole="checkbox"
+                accessibilityState={{ checked: an }}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}
+              >
+                <View style={[s.blase, { borderColor: rand }, (an || (aufgeloest && n.flagge)) && { boxShadow: schatten.leuchten }]}>
+                  <Txt groesse={15} gewicht="fett">
+                    {n.text}
+                  </Txt>
+                  {n.zusatz && !aufgeloest ? (
+                    <Txt groesse={12} farbe={farben.textHell}>
+                      {n.zusatz}
+                    </Txt>
+                  ) : null}
+                  {aufgeloest ? (
+                    <Txt groesse={12} gewicht="fett" farbe={n.flagge ? farben.akzent : farben.textHell}>
+                      {n.warum}
+                    </Txt>
+                  ) : null}
+                </View>
+                <View style={{ width: 26, alignItems: 'center' }}>{an || (aufgeloest && n.flagge) ? <KleineFlagge groesse={20} wehen={false} /> : null}</View>
+              </Pressable>
+            </Einblenden>
+          );
+        })}
+      </View>
+      {aufgeloest ? (
+        <Knopf text="Weiter" onPress={onWeiter} />
+      ) : (
+        <Knopf
+          text={markiert.length ? `Auflösen (${markiert.length} ${markiert.length === 1 ? 'Flagge' : 'Flaggen'})` : 'Auflösen'}
+          onPress={() => {
+            vibriere('erfolg');
+            setAufgeloest(true);
+          }}
+        />
+      )}
+    </Bildschirm>
+  );
+}
+
+// Plan: drei Schritte mit kleinen bewegten Bildern. Antworten aus dem Quiz tauchen wieder auf.
+function Plan({ onWeiter }: { onWeiter: () => void }) {
+  const { z, vibriere } = useApp();
+  const f = formen(z.person);
+  useEffect(() => {
+    const t = [0, 1, 2].map((k) => setTimeout(() => vibriere('tick'), 250 + k * 420));
+    return () => t.forEach(clearTimeout);
+  }, [vibriere]);
+  const schwer = FRAGEN.find((q) => q.id === 'schwer');
+  const schwerText = schwer && schwer.art === 'chips' ? liste(z.quiz, 'schwer').map((id) => schwer.optionen.find((o) => o.id === id)?.text(f)).filter(Boolean)[0] : null;
+  const zurueckWunsch = FRAGEN.find((q) => q.id === 'zurueck');
+  const wunsch = zurueckWunsch && zurueckWunsch.art === 'chips' ? liste(z.quiz, 'zurueck').map((id) => zurueckWunsch.optionen.find((o) => o.id === id)?.text(f)).filter(Boolean)[0] : null;
+  const m = deinMuster(z.quiz);
+  const schritte = [
+    { nr: 1, titel: 'Anzeichen festhalten', text: schwerText ? `${schwerText}: kurz erzählen statt grübeln. Jeder Moment wird eine Flagge.` : 'Erzähl, was passiert ist. Jeder Moment wird eine Flagge.', bild: <BildFlaggen /> },
+    { nr: 2, titel: 'Muster erkennen', text: `Deine Heiß-kalt-Kurve zeigt, was sich wiederholt. Dein Muster: ${m.name}.`, bild: <BildKurve /> },
+    {
+      nr: 3,
+      titel: 'Muster auflösen',
+      text: `${z.phase === 'getrennt' ? 'Kontaktpause, SOS statt Schreiben und Atemrunde.' : `SOS statt ${f.ihm} zu schreiben, Tage bei dir und Atemrunde.`}${wunsch ? ` Für: ${wunsch}.` : ''}`,
+      bild: <BildSos />,
+    },
+  ];
+  return (
+    <Bildschirm>
+      <TitelMitFigur pose="zeigen">Dein Plan</TitelMitFigur>
+      <Txt groesse={15} farbe={farben.textLeise} style={{ marginTop: -8 }}>
+        In 3 Schritten wieder klar sehen.
+      </Txt>
+      <View style={{ flex: 1, gap: 12, justifyContent: 'center' }}>
+        {schritte.map((st, k) => (
+          <Einblenden key={st.nr} verz={200 + k * 420}>
+            <View style={s.schritt}>
+              <View style={s.schrittBild}>{st.bild}</View>
+              <View style={{ flex: 1, gap: 3 }}>
+                <Txt groesse={12} gewicht="extra" farbe={farben.akzent} style={{ letterSpacing: 1 }}>
+                  {`SCHRITT ${st.nr}`}
+                </Txt>
+                <Txt groesse={18} gewicht="extra">
+                  {st.titel}
+                </Txt>
+                <Txt groesse={14} farbe={farben.textLeise}>
+                  {st.text}
+                </Txt>
+              </View>
+            </View>
+          </Einblenden>
+        ))}
+      </View>
+      <Knopf text="Weiter" onPress={onWeiter} />
+    </Bildschirm>
+  );
+}
+
+// Bild 1: drei Flaggen ploppen nacheinander auf einen kleinen Hügel
+function BildFlaggen() {
+  const a = useRef([0, 1, 2].map(() => new Animated.Value(0))).current;
+  useEffect(() => {
+    const l = Animated.loop(
+      Animated.sequence([
+        Animated.stagger(
+          350,
+          a.map((v) => Animated.spring(v, { toValue: 1, friction: 5, useNativeDriver: Platform.OS !== 'web' })),
+        ),
+        Animated.delay(1600),
+        Animated.parallel(a.map((v) => Animated.timing(v, { toValue: 0, duration: 300, useNativeDriver: Platform.OS !== 'web' }))),
+      ]),
+    );
+    l.start();
+    return () => l.stop();
+  }, [a]);
+  return (
+    <View style={{ width: 84, height: 84, justifyContent: 'flex-end' }}>
+      <View style={{ position: 'absolute', left: 4, right: 4, bottom: 10, height: 18, borderTopLeftRadius: 40, borderTopRightRadius: 40, backgroundColor: '#2E1F38' }} />
+      {a.map((v, k) => (
+        <Animated.View key={k} style={{ position: 'absolute', left: 14 + k * 22, bottom: 20 + (k === 1 ? 6 : 0), opacity: v, transform: [{ scale: v }] }}>
+          <KleineFlagge groesse={18} />
+        </Animated.View>
+      ))}
+    </View>
+  );
+}
+
+// Bild 2: die Heiß-kalt-Kurve zeichnet sich von links nach rechts
+function BildKurve() {
+  const a = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    const l = Animated.loop(Animated.sequence([Animated.timing(a, { toValue: 1, duration: 1800, easing: Easing.inOut(Easing.cubic), useNativeDriver: false }), Animated.delay(1400), Animated.timing(a, { toValue: 0, duration: 0, useNativeDriver: false })]));
+    l.start();
+    return () => l.stop();
+  }, [a]);
+  return (
+    <View style={{ width: 84, height: 84, justifyContent: 'center' }}>
+      <Animated.View style={{ overflow: 'hidden', height: 60, width: a.interpolate({ inputRange: [0, 1], outputRange: [0, 84] }) }}>
+        <Svg width={84} height={60}>
+          <Path d="M2 30 C 10 6, 18 6, 24 26 S 34 54, 42 30 S 54 4, 62 28 S 74 54, 82 32" stroke={farben.akzent} strokeWidth={3.5} fill="none" strokeLinecap="round" />
+          <Circle cx={14} cy={12} r={4} fill={farben.morgen} />
+          <Circle cx={33} cy={46} r={4} fill={farben.kalt} />
+          <Circle cx={53} cy={10} r={4} fill={farben.morgen} />
+          <Circle cx={72} cy={47} r={4} fill={farben.kalt} />
+        </Svg>
+      </Animated.View>
+    </View>
+  );
+}
+
+// Bild 3: der SOS-Knopf atmet
+function BildSos() {
+  const a = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    const l = Animated.loop(Animated.sequence([Animated.timing(a, { toValue: 1, duration: 1200, easing: Easing.inOut(Easing.sin), useNativeDriver: Platform.OS !== 'web' }), Animated.timing(a, { toValue: 0, duration: 1200, easing: Easing.inOut(Easing.sin), useNativeDriver: Platform.OS !== 'web' })]));
+    l.start();
+    return () => l.stop();
+  }, [a]);
+  return (
+    <View style={{ width: 84, height: 84, alignItems: 'center', justifyContent: 'center' }}>
+      <Animated.View style={{ position: 'absolute', width: 76, height: 76, borderRadius: 38, backgroundColor: farben.akzent, opacity: a.interpolate({ inputRange: [0, 1], outputRange: [0.08, 0.28] }), transform: [{ scale: a.interpolate({ inputRange: [0, 1], outputRange: [0.85, 1.05] }) }] }} />
+      <LinearGradient colors={verlaeufe.knopf} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ width: 54, height: 54, borderRadius: 27, alignItems: 'center', justifyContent: 'center' }}>
+        <Txt groesse={14} gewicht="extra" farbe={farben.dunkel}>
+          SOS
+        </Txt>
+      </LinearGradient>
+    </View>
   );
 }
 
@@ -772,6 +1026,9 @@ const s = StyleSheet.create({
   schloss: { width: 96, height: 96, borderRadius: 48, backgroundColor: farben.akzent, alignItems: 'center', justifyContent: 'center', boxShadow: schatten.knopf },
   mini: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 999, backgroundColor: farben.karte, borderWidth: 1, borderColor: farben.karteRand },
   zeitPunkt: { width: 14, height: 14, borderRadius: 7, backgroundColor: farben.textHell, marginTop: 4 },
+  blase: { flex: 1, gap: 2, paddingVertical: 10, paddingHorizontal: 14, borderRadius: 18, borderTopLeftRadius: 6, backgroundColor: farben.karte, borderWidth: 1.5 },
+  schritt: { flexDirection: 'row', alignItems: 'center', gap: 14, padding: 14, borderRadius: 22, backgroundColor: farben.karte, borderWidth: 1, borderColor: farben.karteRand },
+  schrittBild: { width: 84, height: 84, borderRadius: 18, backgroundColor: farben.feld, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
   plan: { borderRadius: 20, paddingVertical: 16, paddingHorizontal: 8, gap: 2, backgroundColor: farben.karte, borderWidth: 2, borderColor: farben.karteRand },
   planAn: { borderColor: farben.akzent, boxShadow: schatten.leuchten },
 });
