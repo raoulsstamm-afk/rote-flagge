@@ -3,6 +3,7 @@
 Am 24.11.2026 aus CLAUDE.md hierher verschoben (Raoul: CLAUDE.md-Widersprüche aufräumen wie bei Mikropolis). Die alte CLAUDE.md mischte den Neuaufbau vom 23.11. mit dem MVP vom 11.11. (heller Creme-Look, 10 Aussagen, Speicher v1, `einordnenKI.ts`). Hier steht alles mit Datum. Neuere Abschnitte gelten vor älteren. Neue Stand-Notizen kommen oben unter "Neu" dazu, die CLAUDE.md enthält nur, was heute gilt.
 
 ## Neu
+- 24.11.2026: Bewertungs-Karte im Onboarding nach dem Ergebnis (wie Gedankenpflanzen). Vor dem Test-App-Update stand preview auf Update-Gruppe cd80b044-8613-4f07-aa54-1a9fe044c2ee, zum Zurückrollen mit `update:republish --group cd80b044-8613-4f07-aa54-1a9fe044c2ee`.
 - 24.11.2026: Onboarding neu (Willkommen mit Knäuel, Flaggen zählen, Plan in 3 Schritten) und App mit 3 Tabs. Vor dem Test-App-Update stand preview auf Update-Gruppe 9c3b3479-a8ee-4618-af4b-ad591a862a52, zum Zurückrollen mit `update:republish --group 9c3b3479-a8ee-4618-af4b-ad591a862a52`.
 - 24.11.2026: Paywall: Monatsabo immer sichtbar (beide Abos ohne "Alle Pläne"). Vor dem Test-App-Update stand preview auf Update-Gruppe da40faad-17b0-46c8-8bf5-6f83d2614e19, zum Zurückrollen mit `update:republish --group da40faad-17b0-46c8-8bf5-6f83d2614e19`.
 - 24.11.2026: Paywall nach Split-Test-Bibliothek: Jahresabo als Monatspreis (3,33 €), Monatsabo hinter "Alle Pläne", "Heute 0 €. Jederzeit kündbar.", Knäuel größer.
