@@ -12,7 +12,7 @@ import { Txt } from '@/components/Txt';
 import { Bildschirm, Chip, Einblenden, Karte, Knopf, NurAufDemHandy, useFeder } from '@/components/ui';
 import { formen, PRONOMEN_WAHL, Pronomen } from '@/data/person';
 import { Phase, PHASEN } from '@/data/phasen';
-import { ERINNERUNG_TAG, GRATIS_TAGE, PREIS_JAHR, PREIS_MONAT } from '@/data/preise';
+import { ERINNERUNG_TAG, GRATIS_TAGE, PREIS_JAHR, PREIS_JAHR_PRO_MONAT, PREIS_MONAT } from '@/data/preise';
 import { deinMuster, FRAGEN, liste, quizSchwerpunkte, ZIELE } from '@/data/quiz';
 import { useApp } from '@/state/store';
 import { farben, schatten, schrift, verlaeufe } from '@/theme';
@@ -643,6 +643,8 @@ function Paywall({ onFertig }: { onFertig: () => void }) {
   const { z, vibriere } = useApp();
   const [plan, setPlan] = useState<'jahr' | 'monat'>('jahr');
   const [hinweis, setHinweis] = useState(false);
+  // Split-Test-Bibliothek (Raoul 24.11.2026): Jahresabo als Monatspreis, Monatsabo erst nach "Alle Pläne"
+  const [allePlaene, setAllePlaene] = useState(false);
   const titel = z.phase === 'getrennt' ? `Dein Weg raus.\nIn ${z.ziel} Tagen.` : `Wieder klar sehen.\nIn ${z.ziel} Tagen.`;
   const zeit = [
     { fett: 'Heute', text: 'Alles frei. Dein Weg startet.' },
@@ -683,14 +685,16 @@ function Paywall({ onFertig }: { onFertig: () => void }) {
       <View style={{ flex: 1 }} />
       <Einblenden verz={480} stil={{ flexDirection: 'row', gap: 12 }}>
         <View style={{ flex: 1 }}>
-          <View style={{ position: 'absolute', right: 4, top: -62, zIndex: 0 }}>
-            <Figur pose={'winken' as Pose} groesse={58} />
+          <View style={{ position: 'absolute', right: 12, top: -104, zIndex: 0 }}>
+            <Figur pose={'winken' as Pose} groesse={100} />
           </View>
-          <PlanKarte an={plan === 'jahr'} marke={`${GRATIS_TAGE} Tage gratis`} titel="Jahr" preis={PREIS_JAHR} unter="3,33 € im Monat" onPress={() => setPlan('jahr')} />
+          <PlanKarte an={plan === 'jahr'} marke={`${GRATIS_TAGE} Tage gratis`} titel="Jahr" preis={PREIS_JAHR_PRO_MONAT} unter={`pro Monat, ${PREIS_JAHR} jährlich`} onPress={() => setPlan('jahr')} />
         </View>
-        <View style={{ flex: 1 }}>
-          <PlanKarte an={plan === 'monat'} titel="Monat" preis={PREIS_MONAT} unter="monatlich kündbar" onPress={() => setPlan('monat')} />
-        </View>
+        {allePlaene ? (
+          <View style={{ flex: 1 }}>
+            <PlanKarte an={plan === 'monat'} titel="Monat" preis={PREIS_MONAT} unter="monatlich kündbar" onPress={() => setPlan('monat')} />
+          </View>
+        ) : null}
       </Einblenden>
       {hinweis ? (
         <Txt groesse={13} farbe={farben.akzent} mitte>
@@ -698,8 +702,20 @@ function Paywall({ onFertig }: { onFertig: () => void }) {
         </Txt>
       ) : null}
       <Einblenden verz={600}>
-        <Knopf text={plan === 'jahr' ? 'Kostenlos starten' : 'Monatlich starten'} onPress={() => setHinweis(true)} />
+        <Knopf text={plan === 'jahr' ? `${GRATIS_TAGE} Tage gratis testen` : 'Monatlich starten'} onPress={() => setHinweis(true)} />
       </Einblenden>
+      <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 10, marginTop: -4 }}>
+        <Txt groesse={13} gewicht="extra" farbe={farben.textLeise}>
+          {plan === 'jahr' ? 'Heute 0 €. Jederzeit kündbar.' : 'Jederzeit kündbar.'}
+        </Txt>
+        {!allePlaene ? (
+          <Pressable onPress={() => { vibriere('leicht'); setAllePlaene(true); }} hitSlop={10} accessibilityRole="button">
+            <Txt groesse={13} gewicht="extra" farbe={farben.textHell} style={{ textDecorationLine: 'underline' }}>
+              Alle Pläne
+            </Txt>
+          </Pressable>
+        ) : null}
+      </View>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
         <Txt groesse={12} farbe={farben.textHell}>
           Wiederherstellen · Bedingungen
