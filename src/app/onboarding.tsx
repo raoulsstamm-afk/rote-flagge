@@ -1,3 +1,4 @@
+import { useBewertung } from '@/components/Bewertung';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { ReactNode, useEffect, useRef, useState } from 'react';
@@ -52,6 +53,8 @@ export default function Onboarding() {
     setI((x) => Math.min(ABLAUF.length - 1, x + 1));
   };
   const zurueck = () => setI((x) => Math.max(0, x - 1));
+  // Bewertungs-Karte einmal direkt nach dem Ergebnis (Raoul 24.11.2026, wie Gedankenpflanzen)
+  const bewertung = useBewertung(weiter);
   const leisteWert = MIT_LEISTE.indexOf(schritt);
 
   const rahmen = (inhalt: ReactNode, knopf: ReactNode) => (
@@ -252,7 +255,8 @@ export default function Onboarding() {
         <Txt groesse={12} farbe={farben.textHell} mitte>
           Kein Test und keine Diagnose. Nur ein ehrlicher Blick auf das, was du erlebst.
         </Txt>
-        <Knopf text="Weiter" onPress={weiter} />
+        <Knopf text="Weiter" onPress={bewertung.weiter} />
+        {bewertung.karte}
       </Bildschirm>
     );
   }
