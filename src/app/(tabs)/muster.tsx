@@ -1,3 +1,4 @@
+import { WunschKarte } from '@/wunschwand/WunschKarte';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { StyleSheet, Switch, useWindowDimensions, View } from 'react-native';
@@ -221,6 +222,7 @@ export default function Muster() {
           Mit dem Schalter willigst du ein, dass deine Einträge dafür an einen Server in der EU geschickt werden. Jederzeit widerrufbar.
         </Txt>
       </Karte>
+      <WunschKarte />
       <NurAufDemHandy />
     </Bildschirm>
   );
