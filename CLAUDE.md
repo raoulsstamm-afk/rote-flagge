@@ -37,6 +37,7 @@ Neuaufbau seit 23.11.2026. Konzept: Claude Doc https://claude.ai/artifact/MPF8eH
 - **Zustand:** `src/state/store.tsx` (`useApp`), gespeichert unter `rote-flagge-v2`. Alte Einträge aus `rote-flagge-v1` werden übernommen, das Onboarding startet neu.
 - Töne fehlen noch (expo-audio braucht neuen Build, dann Dopamin-Baukasten aus Drangduell mit `requireOptionalNativeModule`-Schutz).
 
+- **Wunsch-Wand** (seit 25.11.2026, Eingang neben "Feedback geben"): Nutzer schlagen Funktionen vor und stimmen ab. `src/wunschwand/` (nur `look.tsx` ist app-eigen), Route `src/app/wunschwand.tsx`, Server-Funktion `wunschwand` im Kopfkiste-Supabase. Neue Wünsche erst nach Freigabe sichtbar. Doku und Freigeben: claude-wissen `wissen/app-fabrik/vorlagen/wunschwand/README.md`. Browser-Foto: `/wunschwand?wunschprobe=1`.
 ## Technik
 - Expo SDK 57, React Native 0.86, TypeScript, Expo Router (`src/app/`). Neue Pakete mit `npx expo install`.
 - Spracheingabe `src/sprache.ts` und `src/components/Sprechknopf.tsx` (expo-speech-recognition, braucht Build; im Browser und ohne Modul fällt sie aufs Tippen zurück). App-Sperre `src/sperre.ts` (expo-local-authentication), Bildschirm `src/components/Sperre.tsx`. Lokale Benachrichtigungen `src/benachrichtigung.ts` (tägliche Erinnerung, geparkte Nachricht nach 24 Stunden bereit). `src/testApp.ts` für die Test-App.

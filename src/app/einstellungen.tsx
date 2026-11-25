@@ -126,6 +126,16 @@ export default function Einstellungen() {
 
       <Karte stil={{ gap: 10 }}>
         <Txt groesse={18} gewicht="serif">
+          Wunsch-Wand
+        </Txt>
+        <Txt groesse={14} farbe={farben.textLeise}>
+          Was soll Rote Flagge noch können? Wünsch dir etwas oder stimm für die Ideen anderer.
+        </Txt>
+        <Knopf text="Zur Wunsch-Wand" art="glas" klein onPress={() => router.push('/wunschwand')} />
+      </Karte>
+
+      <Karte stil={{ gap: 10 }}>
+        <Txt groesse={18} gewicht="serif">
           Deine Daten
         </Txt>
         <Txt groesse={14} farbe={farben.textLeise}>

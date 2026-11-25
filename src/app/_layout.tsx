@@ -69,6 +69,7 @@ function Inhalt() {
         <Stack.Screen name="geparkt" />
         <Stack.Screen name="sos" options={{ presentation: 'fullScreenModal', animation: 'fade' }} />
         <Stack.Screen name="einstellungen" />
+        <Stack.Screen name="wunschwand" />
       </Stack>
     </Sperre>
   );
